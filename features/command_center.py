@@ -135,6 +135,7 @@ def _make_image(agent, desc):
     from mk49 import images as img
     try:
         raw, ext = img.generate(desc)
+        raw, ext = img.fit_for_forum(raw)
         url = img.upload_to_forum(agent.client, raw, "cmd_%d.%s" % (int(_now()), ext))
         agent.state.stat_bump("images")
         return "🖼️ %s\n\n![img](%s)" % (desc[:40], url)

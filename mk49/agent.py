@@ -180,6 +180,8 @@ class Agent:
             plan["daily_digest"] = True
         else:
             plan.setdefault("daily_digest", False)
+        # knowledge pass: once per day, any hour (read-only work)
+        plan["learn"] = self.state.daily_count("learn") == 0
         return plan
 
     def _observation_digest(self):

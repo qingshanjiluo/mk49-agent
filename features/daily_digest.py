@@ -38,23 +38,78 @@ class DailyDigest(Feature):
                 words[w] += 1
         top_words = "、".join(w for w, _ in words.most_common(8)) or "无"
 
+        # AI 一句点评（今日氛围/热点）
+        comment = ""
+        try:
+            comment = (agent.llm.text(
+                "你是论坛速览的编辑。根据今天的热帖标题，写一句 60 字以内的"
+                "当日论坛氛围点评（口语、有梗但克制）。只输出点评正文。\n热帖："
+                + " / ".join(titles[:10]),
+                tier="smart", max_tokens=150) or "").strip()
+        except Exception as exc:
+            agent.log("digest comment failed: %s" % exc)
+
+        # 知识碎片（来自知识库）
+        kline = ""
+        kb_path = agent.cfg.get("knowledge_file") or "state/knowledge.json"
+        try:
+            import json as _json
+            with open(kb_path, "r", encoding="utf-8") as fh:
+                items = (_json.load(fh).get("items") or [])[-6:]
+            if items:
+                pick = items[-2:]
+                kline = "**今日冷知识**：" + "；".join(
+                    "%s——%s" % (i.get("topic"), truncate(i.get("fact"), 60))
+                    for i in pick)
+        except (OSError, ValueError):
+            pass
+
+        # 可选配图（生图失败静默跳过）
+        image_url = ""
+        if agent.cfg.get("digest_with_image"):
+            try:
+                from mk49 import images as img
+                prompt = agent.llm.image_prompt_for(
+                    "今日论坛速览头图，主题：" + (top_words or "论坛日常"),
+                    title="每日速览")
+                raw, ext = img.generate(prompt, timeout=120)
+                raw, ext = img.fit_for_forum(raw)
+                image_url = img.upload_to_forum(
+                    agent.client, raw, "digest_%d.%s" % (int(_now()), ext))
+                agent.state.stat_bump("images")
+            except Exception as exc:
+                agent.log("digest image skipped: %s" % exc)
+
         lines = [
             "## 📋 今日速览 %s" % date.today().isoformat(),
             "",
-            "**热帖一览**",
         ]
+        if comment:
+            lines += ["> " + comment, ""]
+        lines.append("**热帖一览**")
         # 论坛限制：一篇帖子最多 10 个站内卡片，列表最多放 7 张
         cards_used = 0
         for t in o.new_threads[:7]:
             if cards_used >= 7:
                 break
-            lines.append("- [threadcard:%s] %s" % (t["id"], truncate(t.get("title", ""), 30)))
+            replies = t.get("reply_count", t.get("post_count", "?"))
+            lines.append("- %s %s（回复 %s）"
+                         % (thread_card(t["id"]),
+                            truncate(t.get("title", ""), 26), replies))
             cards_used += 1
         lines += [
             "",
             "**今日关键词**：%s" % top_words,
+        ]
+        if kline:
+            lines += ["", kline]
+        if image_url:
+            alt = (top_words or "速览头图").replace("[", "").replace("]", "")[:20]
+            lines += ["", "![%s](%s)" % (alt, image_url)]
+        lines += [
             "",
-            "> 本帖由驻论坛助手自动汇总，每天更新一次。",
+            "---",
+            "*本帖由驻论坛助手自动汇总，每天更新一次。想看某帖的详细整理可以在楼下回复我。*",
         ]
         body = "\n".join(lines)
         title = "【速览】%s 热帖与关键词" % date.today().isoformat()
@@ -73,6 +128,11 @@ class DailyDigest(Feature):
             agent.log("digest posted: %s" % data["id"])
             return 1
         return 0
+
+
+def _now():
+    import time
+    return time.time()
 
 
 _CUT = set("的了是在和与及我你他她它们这那个一二三四五六七八九十上下中有没都还就")

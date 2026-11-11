@@ -94,6 +94,7 @@ class ChatClient:
         self.temp_fast = float(self.models.get("temperature_fast", 0.4))
         self.timeout = timeout
         self.persona = self._load_persona()
+        self.knowledge_text = ""
         self.session = requests.Session()
         self.session.trust_env = False
 
@@ -108,7 +109,10 @@ class ChatClient:
         return "\n\n".join(parts)
 
     def system(self, extra=""):
-        parts = [p for p in (self.persona, (extra or "").strip()) if p]
+        parts = [p for p in (self.persona, (self.knowledge_text or "").strip())
+                 if p]
+        parts.append((extra or "").strip())
+        parts = [p for p in parts if p]
         return "\n\n".join(parts)
 
     # ------------- transport -------------

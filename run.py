@@ -102,6 +102,16 @@ def cmd_run():
     return 0
 
 
+def cmd_learn():
+    agent, cfg, llm = build_agent()
+    agent.bootstrap()
+    feat = agent.features.get("knowledge_learner")
+    n = feat.run(agent, {"learn": True})
+    agent.state.save()
+    print("learn done:", n)
+    return 0
+
+
 def cmd_loop():
     agent, cfg, llm = build_agent()
     agent.bootstrap()
@@ -116,6 +126,7 @@ def main(argv):
         "loop": cmd_loop,
         "doctor": cmd_doctor,
         "digest": cmd_digest,
+        "learn": cmd_learn,
         "demo-image": cmd_demo_image,
     }
     fn = table.get(cmd)

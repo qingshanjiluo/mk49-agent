@@ -31,6 +31,6 @@ def load_all():
         smart_comment, image_post, url_card, welcome_newcomer, daily_digest,
         poll_rider, like_curator, mention_watch, command_center,
         content_safety, thread_summarizer, hot_topic_tracker,
-        series_builder, emoji_enhancer,
+        series_builder, emoji_enhancer, knowledge_learner,
     )
     return FEATURES

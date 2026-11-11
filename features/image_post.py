@@ -34,6 +34,7 @@ class ImagePost(Feature):
 
         try:
             raw, ext = img.generate(prompt, provider=agent.cfg.get("image_provider"))
+            raw, ext = img.fit_for_forum(raw)
             url = img.upload_to_forum(agent.client, raw,
                                       "agent_%d.%s" % (int(_now()), ext))
             agent.state.stat_bump("images")
