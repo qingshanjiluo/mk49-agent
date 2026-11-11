@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Runtime state & secrets (never commit credentials or session tokens)
+state/
+config.json
+login_session.json
+*.token
+
+# Local probes
+*.png
+*.jpg
+c1_big.png
+
+# OS
+Thumbs.db
+.DS_Store

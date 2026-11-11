@@ -1,0 +1,23 @@
+{
+  "gateway": "https://ai.furry.vg/v1",
+  "gateway_key_env": "FURRY_API_KEY",
+  "credential_file": ".credentials.yaml",
+  "chat_models": [
+    "selfdeploy/deepseek-v4.1-flash-free",
+    "selfdeploy/deepseek-v4-flash",
+    "selfdeploy/glm-5.3-flash",
+    "agnes-3.0-flash",
+    "glm-5.3-flash-free"
+  ],
+  "smart_model": "selfdeploy/deepseek-v4.1-flash-free",
+  "fast_model": "selfdeploy/deepseek-v4-flash",
+  "image_models": [
+    "agnes-image-2.5-flash",
+    "agnes-image-2.1-flash",
+    "agnes-image-2.0-flash"
+  ],
+  "image_endpoint": "/images/generations",
+  "temperature_smart": 0.85,
+  "temperature_fast": 0.4,
+  "temperature_image": 0.9
+}

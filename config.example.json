@@ -1,0 +1,69 @@
+{
+  "gateway": "https://ai.furry.vg/v1",
+  "gateway_key_env": "FURRY_API_KEY",
+  "credential_file": ".credentials.yaml",
+  "smart_model": "selfdeploy/deepseek-v4.1-flash-free",
+  "fast_model": "selfdeploy/deepseek-v4.1-flash-free",
+  "model_chain": [
+    "selfdeploy/deepseek-v4.1-flash-free",
+    "selfdeploy/deepseek-v4-flash",
+    "selfdeploy/glm-5.3-flash",
+    "agnes-3.0-flash"
+  ],
+  "image_models": [
+    "agnes-image-2.5-flash",
+    "agnes-image-2.1-flash",
+    "agnes-image-2.0-flash"
+  ],
+  "image_endpoint": "/images/generations",
+  "image_size": "1024x1024",
+  "temperature_smart": 0.85,
+  "temperature_fast": 0.4,
+  "base_url": "https://forum.mk49.top/bbs",
+  "username": "your_forum_username",
+  "password": "your_forum_password",
+  "target_categories": [
+    2,
+    5,
+    16,
+    39
+  ],
+  "community_categories": [
+    2
+  ],
+  "help_categories": [
+    5,
+    16,
+    39
+  ],
+  "scan_interval": 600,
+  "max_threads_per_cycle": 10,
+  "daily_post_limit": 2,
+  "daily_comment_limit": 8,
+  "comment_probability": 0.6,
+  "like_probability": 0.3,
+  "skip_pinned": true,
+  "skip_authors_below_id": 50,
+  "never_reply_self": true,
+  "allow_nested_reply": true,
+  "max_reply_depth": 3,
+  "avoid_poll_keywords": [
+    "选举",
+    "民选",
+    "竞选",
+    "投票用贴",
+    "参选"
+  ],
+  "mention_keywords": [
+    "zzhx",
+    "助手",
+    "机器人"
+  ],
+  "welcome_newcomers": true,
+  "enable_image_posts": true,
+  "enable_auto_cards": true,
+  "max_cards_per_post": 7,
+  "state_file": "state/agent_state.json",
+  "persona_file": "persona.txt",
+  "persona_game_file": "persona_game.txt"
+}
