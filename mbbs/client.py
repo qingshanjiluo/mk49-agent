@@ -540,7 +540,12 @@ class MBBSClient:
         return payload.get("data") or [], (payload.get("extra") or {}).get("totalCount")
 
     def read_message(self, message_id):
-        return self.post("message/readMessage", {"message_id": message_id}).get("data")
+        return self.get("message/readMessage",
+                        params={"msg_id": message_id}).get("data")
+
+    def mark_message_unread(self, message_id):
+        return self.post("message/markMessageUnread",
+                         {"msg_id": message_id}).get("data")
 
     def read_all_messages(self):
         return self.post("message/readAllMessage").get("data")

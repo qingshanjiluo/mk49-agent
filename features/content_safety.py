@@ -34,18 +34,23 @@ class ContentSafety(Feature):
                 hits.append("%s:%s" % (label, m.group(0)))
         if hits:
             return False, ";".join(hits), None
-        # LLM 复核（可失败，失败视为通过）
-        try:
-            verdict = agent.llm.json(
-                "审核以下论坛发言是否风险（政治/色情/暴力/广告/隐私泄露/人身攻击）。"
-                '{"safe":true/false,"reason":"10字内"}\n发言：' + plain[:400],
-                system="你是内容安全审核员，只输出JSON。",
-                temperature=0.1, max_tokens=120, json_mode=True,
-            )
+        # LLM 复核：flash 模型偶发误判，两次一致才拒绝；错误视为通过
+        rejections = 0
+        for _ in range(2):
+            try:
+                verdict = agent.llm.json(
+                    "审核以下论坛发言是否风险（政治/色情/暴力/广告/隐私泄露/人身攻击）。"
+                    "只在有明确证据时才判 false，正常游戏讨论/玩梗/日常闲聊一律 true。"
+                    '{"safe":true/false,"reason":"10字内"}\n发言：' + plain[:400],
+                    system="你是内容安全审核员，只输出JSON。",
+                    temperature=0.1, max_tokens=120, json_mode=True,
+                )
+            except Exception:
+                continue
             if verdict.get("safe") is False:
-                return False, str(verdict.get("reason", "llm"))[:40], None
-        except Exception:
-            pass
+                rejections += 1
+        if rejections >= 2:
+            return False, "llm复核两次拒绝", None
         return True, "", None
 
     def run(self, agent, plan):
