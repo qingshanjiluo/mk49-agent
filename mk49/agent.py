@@ -18,6 +18,12 @@ from .llm import extract_json
 from .style import StyleSkill
 from .memory import InteractionMemory
 from .workflow import Workflow
+from .tools import build_registry
+
+
+def _today():
+    from datetime import date
+    return date.today().isoformat()
 
 
 class Observation:
@@ -50,6 +56,7 @@ class Agent:
         self.style = StyleSkill(cfg)
         self.memory = InteractionMemory(state)
         self.workflow = Workflow(state)
+        self.registry = build_registry()
 
     # ------------------------------------------------ logging
     def log(self, msg):
@@ -186,6 +193,26 @@ class Agent:
         self.last_plan = plan
         self.state.log("plan", json.dumps(plan, ensure_ascii=False)[:300])
         return plan
+
+    # ------------------------------------------------ skills
+    def refresh_skills(self):
+        """Load skills/*.txt into the LLM system prompt knowledge."""
+        import os
+        skills_dir = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "skills")
+        parts = []
+        try:
+            for fn in sorted(os.listdir(skills_dir)):
+                if fn.endswith(".txt"):
+                    with open(os.path.join(skills_dir, fn), "r",
+                              encoding="utf-8", errors="replace") as fh:
+                        body = fh.read().strip()
+                    if body:
+                        parts.append("[skill:%s]\n%s" % (fn[:-4], body))
+        except OSError:
+            pass
+        base = self.llm.knowledge_text.split("[skill:", 1)[0]
+        self.llm.knowledge_text = (base + "\n\n" + "\n\n".join(parts)).strip()
 
     # ------------------------------------------------ schedules
     def is_quiet_now(self):
@@ -421,10 +448,91 @@ class Agent:
         self.state.save()
         self.log("cycle done: %s" % (", ".join(ran) if ran else "nothing to do"))
 
+    # ------------------------------------------------ master session
+    MASTER_STEPS = 6
+
+    def _observation_context(self):
+        o = self.obs
+        rows = ["Today: %s | quiet_hours_now: %s | quota threads %s/%s "
+                "comments %s/%s"
+                % (_today(), self.is_quiet_now(),
+                   self.state.daily_count("threads"),
+                   self.cfg["daily_post_limit"],
+                   self.state.daily_count("comments"),
+                   self.cfg.get("daily_comment_limit", 8))]
+        for t in o.replyable[:6]:
+            rows.append("thread id=%s | %s | replies=%s | floors=%s"
+                        % (t.get("id"), truncate(t.get("title", ""), 36),
+                           t.get("reply_count"),
+                           len(t.get("_comments") or [])))
+        if o.mention_hits:
+            rows.append("mentions: %s" % len(o.mention_hits))
+        return "\n".join(rows)
+
+    def master_session(self, max_steps=None):
+        """LLM-mastered phase: multi-step tool use, then a wrap-up."""
+        max_steps = max_steps or self.MASTER_STEPS
+        self.refresh_skills()
+        sys_text = self.llm.system(
+            "You are the autonomous master agent of the mk49.top forum "
+            "account. You have a full tool belt (forum reads/writes, image "
+            "generation, web browsing, files, shell, scheduling, memory). "
+            "This cycle you may act directly through tools. Guidelines: "
+            "1) check forum_read_inbox and answer what deserves an answer; "
+            "2) optionally comment on interesting threads or start the "
+            "scheduled thread; 3) use mem_write for anything worth "
+            "remembering; 4) be economical: 1-4 tool calls is usually "
+            "enough; 5) never reveal being a bot; 6) night quiet hours "
+            "block writes automatically. Finish with a one-line summary.")
+        messages = [
+            {"role": "system", "content": sys_text},
+            {"role": "user", "content":
+                "Current observation:\n" + self._observation_context()},
+        ]
+        reg = self.registry
+        actions = 0
+        for _step in range(max_steps):
+            try:
+                msg = self.llm.chat_raw(messages, tier="smart",
+                                        max_tokens=900, tools=reg.schemas())
+            except Exception as exc:
+                self.log("master LLM failed: %s" % exc)
+                break
+            calls = msg.get("tool_calls") or []
+            if not calls:
+                self.state.log("master", (msg.get("content") or "")[:200])
+                break
+            messages.append({"role": "assistant",
+                             "content": msg.get("content") or "",
+                             "tool_calls": calls})
+            for call in calls[:3]:
+                fn = call.get("function") or {}
+                name = fn.get("name", "")
+                try:
+                    import json as _json
+                    args = _json.loads(fn.get("arguments") or "{}")
+                except ValueError:
+                    args = {}
+                out = reg.dispatch(self, name, args)
+                actions += 0 if out.startswith("ERROR") else 1
+                messages.append({"role": "tool",
+                                 "tool_call_id": call.get("id"),
+                                 "content": out[:1500]})
+                self.log("tool %s -> %s" % (name, out[:90]))
+        return actions
+
     def run_cycle(self):
         self.observe()
         plan = self.decide()
         ran = self.act(plan)
+        # LLM-mastered autonomous phase (skipped during quiet hours)
+        if not self.is_quiet_now():
+            try:
+                n = self.master_session()
+                if n:
+                    ran.append("master:%s" % n)
+            except Exception as exc:
+                self.log("master session crashed: %s" % exc)
         self.reflect(ran)
         return ran
 

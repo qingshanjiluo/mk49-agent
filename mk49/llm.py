@@ -157,6 +157,43 @@ class ChatClient:
                 last_err = "%s: %s" % (model, str(exc)[:140])
         raise LLMError("all models failed: %s" % last_err)
 
+    def chat_raw(self, messages, *, tier="smart", temperature=None,
+                 max_tokens=900, tools=None):
+        """Function-calling variant: returns the full assistant message
+        dict (content + tool_calls) instead of only the text."""
+        first = self.smart_model if tier == "smart" else self.fast_model
+        order = [first] + list(self.chain)
+        temp = (self.temp_smart if tier == "smart" else self.temp_fast) \
+            if temperature is None else temperature
+        payload_base = {
+            "messages": messages,
+            "temperature": temp,
+            "max_tokens": max_tokens,
+            "stream": False,
+        }
+        if tools:
+            payload_base["tools"] = tools
+            payload_base["tool_choice"] = "auto"
+        last_err = None
+        for model in dict.fromkeys(order):
+            payload = dict(payload_base, model=model)
+            try:
+                headers = {"Authorization": "Bearer " + self.key,
+                           "Content-Type": "application/json"}
+                r = self.session.post(self.base_url + "/chat/completions",
+                                      headers=headers, json=payload,
+                                      timeout=self.timeout)
+                if r.status_code >= 400:
+                    raise LLMError("HTTP %s %s"
+                                   % (r.status_code, r.text[:160]))
+                data = r.json()
+                if "error" in data:
+                    raise LLMError(str(data["error"])[:200])
+                return data["choices"][0]["message"] or {}
+            except Exception as exc:
+                last_err = "%s: %s" % (model, str(exc)[:140])
+        raise LLMError("chat_raw failed on all models: %s" % last_err)
+
     def text(self, prompt, *, system=None, tier="smart",
              temperature=None, max_tokens=900):
         msgs = []

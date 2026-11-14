@@ -32,5 +32,6 @@ def load_all():
         poll_rider, like_curator, mention_watch, command_center,
         content_safety, thread_summarizer, hot_topic_tracker,
         series_builder, emoji_enhancer, knowledge_learner, message_center,
+        script_runner,
     )
     return FEATURES
