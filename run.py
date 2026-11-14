@@ -119,7 +119,17 @@ def cmd_loop():
     return 0
 
 
+def _force_utf8_console():
+    """GBK console chokes on exotic unicode in nicknames."""
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
 def main(argv):
+    _force_utf8_console()
     cmd = argv[1] if len(argv) > 1 else "run"
     table = {
         "run": cmd_run,

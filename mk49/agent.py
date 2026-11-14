@@ -541,10 +541,7 @@ class Agent:
         while True:
             wrote = []
             try:
-                self.observe()
-                plan = self.decide()
-                wrote = self.act(plan)
-                self.reflect(wrote)
+                wrote = self.run_cycle()
             except Exception as exc:
                 self.log("cycle error: %s" % exc)
                 traceback.print_exc()

@@ -1,4 +1,5 @@
 """Tool base class and registry for the mk49 agent."""
+import difflib
 import json
 import traceback
 
@@ -43,11 +44,20 @@ class ToolRegistry:
     def schemas(self):
         return [t.schema() for t in self._tools.values()]
 
+    def resolve(self, name):
+        """Exact hit, else closest tool name (LLMs sometimes guess)."""
+        if name in self._tools:
+            return self._tools[name]
+        matches = difflib.get_close_matches(name, self._tools, n=1, cutoff=0.75)
+        return self._tools[matches[0]] if matches else None
+
     def dispatch(self, agent, name, args):
         """Execute a tool; returns a text result (never raises)."""
-        tool = self._tools.get(name)
+        tool = self.resolve(name)
         if tool is None:
             return "ERROR: unknown tool %s" % name
+        if tool.name != name:
+            agent.log("tool alias: %s -> %s" % (name, tool.name))
         if tool.danger and agent.is_quiet_now():
             return "ERROR: quiet hours (23:00-08:00) - forum writes disabled"
         try:

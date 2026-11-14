@@ -220,7 +220,7 @@ class MessageCenter(Feature):
         from mk49.context import comment_chain
         chain = comment_chain(comments, target, agent.client.user_id) \
             if target is not None else ""
-        prev_memory = agent.memory.thread_context(tid)
+        prev_memory = agent.memory.thread_context(e["thread_id"])
         ctx = {
             "kind": e["kind"],
             "thread_title": truncate(thread.get("title") or "", 60),

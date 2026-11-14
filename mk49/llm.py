@@ -182,7 +182,7 @@ class ChatClient:
                            "Content-Type": "application/json"}
                 r = self.session.post(self.base_url + "/chat/completions",
                                       headers=headers, json=payload,
-                                      timeout=self.timeout)
+                                      timeout=max(self.timeout, 300))
                 if r.status_code >= 400:
                     raise LLMError("HTTP %s %s"
                                    % (r.status_code, r.text[:160]))
