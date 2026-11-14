@@ -107,9 +107,13 @@ class SmartComment(Feature):
         import re as _re
         payload = render.shorten_comment_md(
             _re.sub(r"\[(?:threadcard|usercard):[1-9]\d*\]", "", text))
+        from mk49.context import resolve_reply_target
+        root_id, nested_id = resolve_reply_target(
+            thread.get("_comments") or [], comment["id"])
         data = None
         try:
-            data = agent.client.reply_comment(comment["id"], payload)
+            data = agent.client.reply_comment(root_id, payload,
+                                              comment_post_id=nested_id)
         except Exception as exc:
             agent.log("nested reply failed on %s: %s" % (comment["id"], exc))
         if data and data.get("id"):

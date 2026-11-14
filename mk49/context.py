@@ -111,6 +111,33 @@ def is_replyable(t, cfg, my_id):
     return True, ""
 
 
+def resolve_reply_target(comments, target_id):
+    """UI-accurate reply params for posts/createComment.
+
+    - target is a first-level comment -> (target_id, None)
+    - target is nested -> (root first-level id, target_id)
+    The SPA only renders children whose reply_post_id == a first-level id,
+    plus sub-children whose comment_post_id == that child's id; anything
+    else becomes a ghost record.
+    """
+    by_id = {c.get("id"): c for c in comments}
+    cur = by_id.get(target_id)
+    if cur is None:
+        return target_id, None
+    if not cur.get("is_comment"):
+        return target_id, None
+    guard = 0
+    while cur and guard < 8:
+        pid = cur.get("reply_post_id")
+        parent = by_id.get(pid)
+        if parent is not None and not parent.get("is_comment"):
+            return pid, target_id
+        cur = parent
+        guard += 1
+    # chain broken: reply flat under the target's own reply_post
+    return (cur.get("reply_post_id") if cur else target_id), target_id
+
+
 def render_thread_block(t, comments, cfg, my_id, category_names=None,
                         body="", max_comments=8):
     """给 LLM 的完整帖子阅读块（元数据 + 正文 + 楼层元数据）。"""

@@ -110,7 +110,9 @@ class MessageCenter(Feature):
                     import re as _re
                     body = _re.sub(r"\[(?:threadcard|usercard):[1-9]\d*\]",
                                    "", text)
-                    data = agent.client.reply_comment(target["id"], body)
+                    from mk49.context import resolve_reply_target
+                    root_id, nested_id = resolve_reply_target(comments, target["id"])
+                    data = agent.client.reply_comment(root_id, body, comment_post_id=nested_id)
                 else:
                     data = agent.client.create_post(tid, text)
             except Exception as exc:

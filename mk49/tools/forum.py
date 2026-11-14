@@ -186,23 +186,28 @@ class ReplyComment(Tool):
     description = ("Nested reply (sub-reply) to any comment or nested reply. "
                    "Threads naturally to any depth. No quoting needed.")
     params = schema({"comment_id": ("integer", "comment/reply id to answer"),
+                     "thread_id": ("integer", "thread the comment lives in"),
                      "text": ("string", "reply text")},
-                    required=["comment_id", "text"])
+                    required=["comment_id", "thread_id", "text"])
     danger = True
 
-    def run(self, agent, comment_id=0, text=""):
+    def run(self, agent, comment_id=0, thread_id=0, text=""):
         safety = agent.features.get("content_safety")
         if safety:
             ok, reason, _ = safety.check(text, agent)
             if not ok:
                 return "BLOCKED by safety: %s" % reason
         text = agent.style.enforce_length(text, "comment", agent)
-        d = agent.client.reply_comment(comment_id, text)
+        from mk49.context import resolve_reply_target
+        comments = agent.client.all_comments(thread_id)
+        root_id, nested_id = resolve_reply_target(comments, comment_id)
+        d = agent.client.reply_comment(root_id, text,
+                                       comment_post_id=nested_id)
         if d and d.get("id"):
             agent.state.bump_daily("comments")
             agent.state.stat_bump("comments")
-            return "replied as post %s (reply_post=%s)" % (d["id"],
-                                                           d.get("reply_post_id"))
+            return ("replied as post %s (root=%s nested=%s)"
+                    % (d["id"], root_id, nested_id))
         return "ERROR: reply failed"
 
 
