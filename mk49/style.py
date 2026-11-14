@@ -6,10 +6,15 @@ comments read like a real member: short, casual, no essay structure.
 
 import re
 
-COMMENT_MAX = 150
-COMMENT_TARGET = 60
+COMMENT_MAX = 200     # generous hard cap; the model picks its own length
 POST_MAX = 500
 POST_TARGET = 260
+# natural length buckets a real member swings between
+LENGTH_DICE = [
+    ("超短", "3~12 个字，就像随手回一句（如 确实/哈哈这真的离谱/绷不住）"),
+    ("短", "15~40 个字，一两句话接住对方的点"),
+    ("中", "40~90 个字，补一点自己的经验或观点"),
+]
 
 # AI-typical fillers that give essays away
 AIISMS = [
@@ -85,17 +90,16 @@ class StyleSkill:
         return t.strip()
 
     def enforce_length(self, text, kind="comment", agent=None):
-        """Regenerate shorter when way over target; hard-cut as last resort."""
+        """Only guard against essay-length output; the model owns its length."""
         limit = self.comment_max if kind == "comment" else self.post_max
-        target = COMMENT_TARGET if kind == "comment" else POST_TARGET
-        if len(text) <= limit * 1.2:
+        if len(text) <= limit:
             return self.humanize(text, kind)
-        # one shorten round via LLM when available
+        # one shorten round only when way over the generous cap
         if agent is not None and getattr(agent, "llm", None):
             try:
                 shorter = agent.llm.text(
                     "把下面的论坛发言压缩到 %d 字以内，保留原语气，只输出压缩后的正文：\n%s"
-                    % (target, text[:600]),
+                    % (COMMENT_TARGET, text[:600]),
                     tier="fast", max_tokens=220, temperature=0.6,
                 )
                 if shorter and len(shorter) <= limit:
@@ -104,10 +108,15 @@ class StyleSkill:
                 pass
         return _sentence_cut(self.humanize(text, kind), limit)
 
+    def length_dice(self):
+        """Random natural length bucket injected into prompts for variety."""
+        import random
+        return random.choice(LENGTH_DICE)
+
     def length_hint(self, kind="comment"):
         if kind == "comment":
-            return "长度 15~%d 字，理想 %d 字上下；" % (self.comment_max,
-                                                     COMMENT_TARGET)
+            return ("长度自己看着定：真人回帖经常就 3~15 个字，偶尔才写长；"
+                    "超过 120 字基本必是真人不写的；")
         return "长度 %d~%d 字；" % (COMMENT_TARGET, self.post_max)
 
     def tone_hint(self):
