@@ -15,6 +15,9 @@ from mbbs.content import strip_html, truncate
 from .context import is_replyable, render_thread_block, thread_meta, comment_meta
 
 from .llm import extract_json
+from .style import StyleSkill
+from .memory import InteractionMemory
+from .workflow import Workflow
 
 
 class Observation:
@@ -44,6 +47,9 @@ class Agent:
         self.username = cfg.get("username", "")
         self.obs = Observation()
         self.last_plan = None
+        self.style = StyleSkill(cfg)
+        self.memory = InteractionMemory(state)
+        self.workflow = Workflow(state)
 
     # ------------------------------------------------ logging
     def log(self, msg):
@@ -60,6 +66,15 @@ class Agent:
         self.my_perms = set(perms)
         self.log("login ok: %s (group=%s, perms=%d)"
                  % (self.nickname, (me.get("group") or {}).get("name"), len(perms)))
+        # inject learned forum knowledge into every LLM call
+        kb_md = (self.cfg.get("knowledge_file") or "state/knowledge.json")
+        kb_md = kb_md.rsplit(".", 1)[0] + ".md"
+        try:
+            with open(kb_md, "r", encoding="utf-8") as fh:
+                self.llm.knowledge_text = fh.read()[:2500]
+            self.log("knowledge loaded: %d chars" % len(self.llm.knowledge_text))
+        except OSError:
+            pass
 
     # ------------------------------------------------ observation
     def observe(self):
@@ -172,6 +187,36 @@ class Agent:
         self.state.log("plan", json.dumps(plan, ensure_ascii=False)[:300])
         return plan
 
+    # ------------------------------------------------ schedules
+    def is_quiet_now(self):
+        """Night quiet hours: no forum writes (default 23:00-08:00)."""
+        from datetime import datetime
+        start = int(self.cfg.get("quiet_start", 23))
+        end = int(self.cfg.get("quiet_end", 8))
+        hour = datetime.now().hour
+        if start < end:
+            return start <= hour < end
+        return hour >= start or hour < end  # window crosses midnight
+
+    def _slot_due(self):
+        """Fixed posting slots (fixed posting data). Returns slot or None."""
+        from datetime import datetime
+        slots = self.cfg.get("posting_slots") or []
+        if not slots:
+            return None
+        now = datetime.now()
+        used = self.state._day_bucket().get("slots", {})
+        for slot in slots:
+            try:
+                hh, mm = [int(x) for x in str(slot).split(":")]
+            except (ValueError, AttributeError):
+                continue
+            due_min = hh * 60 + mm
+            now_min = now.hour * 60 + now.minute
+            if slot not in used and 0 <= now_min - due_min <= 45:
+                return slot
+        return None
+
     def _apply_schedules(self, plan):
         """Time-driven actions independent of the LLM plan."""
         from datetime import datetime
@@ -182,6 +227,15 @@ class Agent:
             plan.setdefault("daily_digest", False)
         # knowledge pass: once per day, any hour (read-only work)
         plan["learn"] = self.state.daily_count("learn") == 0
+        # fixed posting slots: deterministic daily thread schedule
+        slot = self._slot_due()
+        plan["posting_slot"] = slot
+        if slot and self.state.daily_count("threads") < self.cfg["daily_post_limit"]:
+            plan["create_thread"] = True
+            plan.setdefault("thread_category",
+                            (self.cfg["target_categories"] or [2])[0])
+            plan.setdefault("image_thread",
+                            bool(self.cfg.get("enable_image_posts")))
         return plan
 
     def _observation_digest(self):
@@ -313,19 +367,42 @@ class Agent:
     # ------------------------------------------------ act
     def act(self, plan):
         ran = []
+        quiet = self.is_quiet_now()
+        if quiet:
+            self.log("quiet hours: writes suppressed, local work only")
+        slot = plan.get("posting_slot")
         for name, feat in self.features.items():
             if not feat.enabled:
                 continue
             try:
                 if feat.triggered_by(plan, self):
+                    if quiet and name not in self.QUIET_SAFE:
+                        self.log("skip %s (quiet hours)" % name)
+                        continue
                     n = feat.run(self, plan)
                     if n:
                         ran.append("%s:%s" % (name, n))
                         self.state.log("feature", "%s=%s" % (name, n))
+                        time.sleep(random.randint(4, 12))  # human pacing
             except Exception as exc:
                 self.log("feature %s crashed: %s" % (name, exc))
                 traceback.print_exc()
+        if slot and not quiet:
+            used = self.state._day_bucket().setdefault("slots", {})
+            used[slot] = True
+            self.state.log("slot", slot)
+        # autonomous workflow: one due task per cycle
+        try:
+            task, result = self.workflow.execute_one(self)
+            if task:
+                ran.append("workflow:%s" % task)
+        except Exception as exc:
+            self.log("workflow crashed: %s" % exc)
         return ran
+
+    # features allowed to run during quiet hours (no forum writes)
+    QUIET_SAFE = {"knowledge_learner", "hot_topic_tracker", "content_safety",
+                  "url_card", "emoji_enhancer"}
 
     def reflect(self, ran):
         # mark observation as processed
@@ -334,6 +411,13 @@ class Agent:
         for tid, c in self.obs.new_comments:
             if c.get("id"):
                 self.state.mark_post(c["id"])
+        # daily memory diary (retention of the full decision flow)
+        try:
+            self.memory.daily_summary(
+                self.state.data.get("stats", {}),
+                [truncate(t, 16) for t in self.obs.hot_titles[:6]])
+        except Exception:
+            pass
         self.state.save()
         self.log("cycle done: %s" % (", ".join(ran) if ran else "nothing to do"))
 
@@ -347,8 +431,12 @@ class Agent:
     def run_forever(self, interval=None):
         interval = interval or self.cfg["scan_interval"]
         while True:
+            wrote = []
             try:
-                self.run_cycle()
+                self.observe()
+                plan = self.decide()
+                wrote = self.act(plan)
+                self.reflect(wrote)
             except Exception as exc:
                 self.log("cycle error: %s" % exc)
                 traceback.print_exc()
@@ -356,4 +444,9 @@ class Agent:
                     self.client.login()
                 except Exception:
                     pass
-            time.sleep(interval)
+            # adaptive sleep: longer after real activity, jitter for humanity
+            base = interval * (1.6 if wrote else 1.0)
+            jitter = random.randint(0, max(60, interval // 6))
+            nap = base + jitter
+            self.log("sleeping %.0fs" % nap)
+            time.sleep(nap)

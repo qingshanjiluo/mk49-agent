@@ -77,12 +77,15 @@ class SmartComment(Feature):
         text = (text or "").strip()
         if not text or not self._gate(agent, text):
             return False
-        payload = render.shorten_comment_md(render.pretty_comment(text, with_quote=False))
+        text = agent.style.enforce_length(text, "comment", agent)
+        payload = render.shorten_comment_md(text)
         data = None
         try:
             data = agent.client.create_post(thread["id"], payload)
         except Exception as exc:
             agent.log("comment failed on %s: %s" % (thread["id"], exc))
+        if data and data.get("id"):
+            agent.memory.record_reply(thread["id"], data["id"], text)
         return self._after_write(agent, thread, data, "thread-comment")
 
     def _reply_to_comment(self, agent, thread, comment):
@@ -100,13 +103,21 @@ class SmartComment(Feature):
         text = (text or "").strip()
         if not text or not self._gate(agent, text):
             return False
+        text = agent.style.enforce_length(text, "comment", agent)
+        import re as _re
         payload = render.shorten_comment_md(
-            render.pretty_comment(text, parent_text=parent, with_quote=True))
+            _re.sub(r"\[(?:threadcard|usercard):[1-9]\d*\]", "", text))
         data = None
         try:
             data = agent.client.reply_comment(comment["id"], payload)
         except Exception as exc:
             agent.log("nested reply failed on %s: %s" % (comment["id"], exc))
+        if data and data.get("id"):
+            agent.memory.record_reply(thread["id"], data["id"], text)
+            agent.memory.record_their_reply(
+                thread["id"], comment["id"],
+                (comment.get("user") or {}).get("nickname"),
+                (comment.get("user") or {}).get("id"), parent)
         return self._after_write(agent, thread, data, "nested-reply")
 
     # ------------------------------------------------------------- helpers
