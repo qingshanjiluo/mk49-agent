@@ -148,13 +148,21 @@ class ChatClient:
             if temperature is None else temperature
         last_err = None
         for model in dict.fromkeys(order):
-            try:
-                out = self._post(model, messages, temp, max_tokens, json_mode)
-                if out:
-                    return out
-                last_err = "empty content from %s" % model
-            except Exception as exc:
-                last_err = "%s: %s" % (model, str(exc)[:140])
+            out = None
+            for attempt in range(3):  # per-model retry (channels flap 5xx)
+                try:
+                    out = self._post(model, messages, temp, max_tokens,
+                                     json_mode)
+                    if out:
+                        break
+                    last_err = "empty content from %s" % model
+                except Exception as exc:
+                    last_err = "%s: %s" % (model, str(exc)[:140])
+                    out = None
+                    import time as _t
+                    _t.sleep(1.2 * (attempt + 1))
+            if out:
+                return out
         raise LLMError("all models failed: %s" % last_err)
 
     def chat_raw(self, messages, *, tier="smart", temperature=None,

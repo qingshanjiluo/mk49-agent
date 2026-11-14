@@ -94,6 +94,25 @@ def _knowledge_count():
         return 0
 
 
+def api_stats(st):
+    """24h action histogram (hourly buckets) + per-type counters."""
+    from collections import Counter
+    now = time.time()
+    hours = [0] * 24
+    types = Counter()
+    for x in st.get("action_log", []):
+        ts = x.get("ts", 0)
+        if 0 <= now - ts < 86400:
+            types[x.get("action", "?")] += 1
+            h = datetime.fromtimestamp(ts).hour
+            hours[h] += 1
+    return {"hours": hours,
+            "hour_labels": ["%02d" % h for h in range(24)],
+            "types": dict(types.most_common(12)),
+            "heat": dict(sorted((st.get("topic_heat") or {}).items(),
+                                key=lambda kv: -kv[1])[:10])}
+
+
 def api_log(st, since):
     items = [x for x in (st.get("action_log") or []) if x.get("seq", 0) > since]
     out = []
@@ -184,6 +203,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/" or path == "/index.html":
                 with open(HTML_PATH, "r", encoding="utf-8") as fh:
                     self._send(200, "text/html; charset=utf-8", fh.read())
+            elif path == "/api/stats":
+                self._send(200, "application/json; charset=utf-8",
+                           json.dumps(api_stats(st), ensure_ascii=False))
             elif path == "/api/state":
                 self._send(200, "application/json; charset=utf-8",
                            json.dumps(api_state(st), ensure_ascii=False))

@@ -51,6 +51,9 @@ class SeriesBuilder(Feature):
                     sid = (created or {}).get("id")
                 except Exception as exc:
                     agent.log("create series failed: %s" % exc)
+                    if "权限" in str(exc):
+                        self.enabled = False
+                        agent.log("series disabled (no permission)")
                     continue
                 if not sid:
                     continue

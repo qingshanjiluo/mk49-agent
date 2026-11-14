@@ -50,43 +50,38 @@ class SmartComment(Feature):
                 if self._reply_to_comment(agent, thread, comment):
                     done += 1
             else:
+                if self._already_commented_today(agent, thread):
+                    when = self._last_comment_time(agent, thread) or "earlier today"
+                    agent.log("WARNING: thread %s already has your comment "
+                              "(%s) - think twice before commenting again"
+                              % (tid, when))
+                    continue
                 if self._comment_thread(agent, thread):
                     done += 1
         return done
 
-    # ------------------------------------------------------------- writers
-    def _comment_thread(self, agent, thread):
-        body = thread.get("_detail") or ""
-        existing = list(thread.get("_comments") or [])
-        own_count = sum(1 for c in existing if c.get("_own"))
-        recent = [{
-            "floor": c.get("_floor"),
-            "author": truncate((c.get("user") or {}).get("nickname") or "?", 16),
-            "text": truncate(strip_html(c.get("content") or ""), 120),
-        } for c in existing[-8:]]
+    def _last_comment_time(self, agent, thread):
+        """Return ISO time of my newest comment on this thread, or None."""
+        from datetime import datetime
+        seq = (agent.memory.state.data.get("thread_memory") or {}).get(
+            str(thread.get("id"))) or []
+        newest = None
+        for e in seq:
+            if e.get("kind") == "mine" and e.get("ts"):
+                newest = max(newest or 0, e["ts"])
+        if not newest:
+            return None
+        return datetime.fromtimestamp(newest).strftime("%m-%d %H:%M")
 
-        text = agent.llm.continue_thread(
-            thread.get("title") or "",
-            body,
-            recent,
-            my_nickname=agent.nickname,
-            category=agent.obs.category_names.get(thread.get("category_id"), ""),
-            already_said=own_count,
-            meta=thread_meta(thread, agent.obs.category_names, agent.client.user_id),
-        )
-        text = (text or "").strip()
-        if not text or not self._gate(agent, text):
-            return False
-        text = agent.style.enforce_length(text, "comment", agent)
-        payload = render.shorten_comment_md(text)
-        data = None
-        try:
-            data = agent.client.create_post(thread["id"], payload)
-        except Exception as exc:
-            agent.log("comment failed on %s: %s" % (thread["id"], exc))
-        if data and data.get("id"):
-            agent.memory.record_reply(thread["id"], data["id"], text)
-        return self._after_write(agent, thread, data, "thread-comment")
+    def _already_commented_today(self, agent, thread):
+        from datetime import date
+        seq = (agent.memory.state.data.get("thread_memory") or {}).get(
+            str(thread.get("id"))) or []
+        for e in reversed(seq):
+            if e.get("kind") == "mine":
+                from datetime import datetime as _dt
+                return _dt.fromtimestamp(e["ts"]).date() == date.today()
+        return False
 
     def _reply_to_comment(self, agent, thread, comment):
         parent = strip_html(comment.get("content") or "")

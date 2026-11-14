@@ -261,8 +261,8 @@ class Agent:
             plan["create_thread"] = True
             plan.setdefault("thread_category",
                             (self.cfg["target_categories"] or [2])[0])
-            plan.setdefault("image_thread",
-                            bool(self.cfg.get("enable_image_posts")))
+            plan["image_thread"] = bool(
+                self.cfg.get("enable_image_posts"))  # force, not setdefault
         return plan
 
     def _observation_digest(self):
@@ -311,7 +311,9 @@ class Agent:
             "规则：\n"
             "1. 只能在 candidate_threads 里挑；不要回复自己的帖子和自己的楼层。\n"
             "2. 置顶帖、老用户(u admin_id 很小)的帖子已被告知“可回复: 否”，不要再挑。\n"
-            "3. 回复要针对楼层里具体的点，别空泛。\n"
+            "3. 回复要针对楼层里具体的点，别空泛；\n"
+            "3b. floors show [id=...] - pick a SPECIFIC floor; you may START a new nested thread, not only answer your own;\n"
+            "3c. my_last_comment = you already spoke today - usually do NOT reply twice unless asked directly.\n"
             "4. 没有值得回的就不回（reply_targets 给 []）。\n"
             "5. 同一轮不要超过 3 个目标。\n\n"
             "观察：\n" + json.dumps(digest, ensure_ascii=False, indent=1)
@@ -460,11 +462,17 @@ class Agent:
                    self.cfg["daily_post_limit"],
                    self.state.daily_count("comments"),
                    self.cfg.get("daily_comment_limit", 8))]
+        last_seen = getattr(self, "features", {}).get("smart_comment")
         for t in o.replyable[:6]:
-            rows.append("thread id=%s | %s | replies=%s | floors=%s"
+            mine = ""
+            if last_seen is not None:
+                when = last_seen._last_comment_time(self, t)
+                if when:
+                    mine = " | my_last_comment=" + when
+            rows.append("thread id=%s | %s | replies=%s | floors=%s%s"
                         % (t.get("id"), truncate(t.get("title", ""), 36),
                            t.get("reply_count"),
-                           len(t.get("_comments") or [])))
+                           len(t.get("_comments") or []), mine))
         if o.mention_hits:
             rows.append("mentions: %s" % len(o.mention_hits))
         return "\n".join(rows)

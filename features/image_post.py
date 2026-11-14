@@ -10,6 +10,7 @@ DEFAULT_CATEGORIES = [2]  # 聊天区
 
 @register
 class ImagePost(Feature):
+    enabled = False  # merged into thread_post
     name = "image_post"
     desc = "生图+上传+URL内联的全自动配图发帖"
     plan_keys = ("image_thread",)

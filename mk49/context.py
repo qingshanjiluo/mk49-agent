@@ -67,7 +67,8 @@ def comment_meta(c, seq=None, my_id=None, category_names=None):
         level = "楼中楼→回复#%s" % (c.get("reply_post_id") or "?")
     else:
         level = "一级评论"
-    head = "#%s楼 " % seq if seq is not None else ""
+    head = ("#%s[id=%s] " % (seq, c.get("id"))
+                    if seq is not None else "[id=%s] " % c.get("id"))
     return "%s%s %s(uid=%s%s) %s [%s]" % (
         head, level, nick, uid, own,
         fmt_time(c.get("created_at")), truncate(strip_html(c.get("content") or ""), 160),
