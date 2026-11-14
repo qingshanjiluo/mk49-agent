@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>mk49-agent 控制台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--line:#21262d;--fg:#c9d1d9;--dim:#8b949e;
+--ok:#3fb950;--warn:#d29922;--err:#f85149;--acc:#58a6ff;--purple:#bc8cff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 "Segoe UI",system-ui,sans-serif;padding:16px}
+h1{font-size:18px;margin-bottom:4px}
+.sub{color:var(--dim);font-size:12px;margin-bottom:14px}
+.grid{display:grid;gap:12px}
+.cards{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.card .k{color:var(--dim);font-size:12px}
+.card .v{font-size:22px;font-weight:600;margin-top:2px}
+.card .v small{font-size:12px;color:var(--dim)}
+.cols{grid-template-columns:1fr 1fr}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.panel h2{font-size:13px;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--acc);background:#11161d}
+.panel .body{padding:10px 12px;max-height:420px;overflow-y:auto}
+.badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;margin-right:6px}
+.b-tool{background:#1c3a5e;color:var(--acc)}
+.b-feature{background:#2a1c5e;color:var(--purple)}
+.b-plan{background:#3a2d14;color:var(--warn)}
+.b-comment,.b-reply{background:#173b25;color:var(--ok)}
+.b-like,.b-digest{background:#3b1725;color:#ff7b72}
+.b-inbox,.b-inbox_reply{background:#14454a;color:#39d2c0}
+.b-workflow{background:#40321a;color:#e3b341}
+.b-safety_block,.b-error{background:#3b1725;color:var(--err)}
+.logline{padding:3px 0;border-bottom:1px dashed #1b2129;font-size:13px;white-space:pre-wrap;word-break:break-all}
+.logline .t{color:var(--dim);font-size:11px;margin-right:8px}
+.bar{height:6px;background:#21262d;border-radius:3px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--acc)}
+.mem-item{padding:6px 0;border-bottom:1px dashed #1b2129;font-size:13px}
+.mem-item .tag{color:var(--acc);font-size:11px;margin-right:6px}
+.mem-item .meta{color:var(--dim);font-size:11px}
+.kv{display:flex;gap:8px;font-size:13px;padding:2px 0}
+.kv .k2{color:var(--dim);min-width:90px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.on{background:var(--ok)}.off{background:var(--err)}
+.live{color:var(--dim);font-size:11px;margin-left:8px}
+</style>
+</head>
+<body>
+<h1>🐉 mk49-agent 控制台 <span id="alive" class="live"></span></h1>
+<div class="sub">龙之归宿 · 幻想智能体 · <span id="clock"></span></div>
+
+<div class="grid cards" id="cards"></div>
+
+<div class="grid cols">
+  <div>
+    <div class="panel">
+      <h2>⚡ 实时动作流 <span class="live">自动刷新</span></h2>
+      <div class="body" id="log"></div>
+    </div>
+    <div class="panel">
+      <h2>🖥 控制台（loop.log）</h2>
+      <div class="body" id="console"></div>
+    </div>
+    <div class="panel">
+      <h2>🗓 工作流队列 / 定时任务</h2>
+      <div class="body" id="queue"></div>
+    </div>
+  </div>
+  <div>
+    <div class="panel">
+      <h2>📚 知识库（论坛已学）</h2>
+      <div class="body" id="knowledge"></div>
+    </div>
+    <div class="panel">
+      <h2>🧵 线程互动记忆</h2>
+      <div class="body" id="threads"></div>
+    </div>
+    <div class="panel">
+      <h2>👥 用户画像</h2>
+      <div class="body" id="users"></div>
+    </div>
+    <div class="panel">
+      <h2>📝 记忆笔记</h2>
+      <div class="body" id="notes"></div>
+    </div>
+    <div class="panel">
+      <h2>📖 每日日记</h2>
+      <div class="body" id="diary"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let lastLog = 0;
+const esc = s => (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtT = ts => new Date(ts*1000).toLocaleTimeString('zh-CN',{hour12:false});
+
+async function j(url){ const r = await fetch(url); return r.json(); }
+
+function bar(used, limit){
+  if(!limit) return "";
+  const p = Math.min(100, Math.round(used/limit*100));
+  return `<div class="bar"><i style="width:${p}%"></i></div>`;
+}
+
+async function refreshState(){
+  try{
+    const st = await j('/api/state');
+    document.getElementById('alive').innerHTML =
+      `<span class="dot ${st.alive?'on':'off'}"></span>${st.alive?'运行中':'疑似停止'}`;
+    const s = st.stats, d = st.today;
+    document.getElementById('cards').innerHTML = [
+      card('总循环', s.cycles||0),
+      card('今日评论', `${d.comments||0}<small>/${st.limits.comments}</small>` + bar(d.comments||0, st.limits.comments)),
+      card('今日发帖', `${d.threads||0}<small>/${st.limits.threads}</small>` + bar(d.threads||0, st.limits.threads)),
+      card('今日点赞', `${d.likes||0}<small>/${st.limits.likes}</small>`),
+      card('生图', s.images||0),
+      card('知识条目', st.knowledge_items||0),
+      card('记忆线程', st.mem_threads||0),
+      card('静默时段', st.quiet ? '🌙 夜间' : '☀️ 日间'),
+    ].join('');
+  }catch(e){}
+}
+const card = (k,v) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+
+async function refreshLog(){
+  try{
+    const data = await j('/api/log?since=' + lastLog);
+    const box = document.getElementById('log');
+    if(data.items.length){
+      const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+      box.insertAdjacentHTML('beforeend', data.items.map(l =>
+        `<div class="logline"><span class="t">${fmtT(l.ts)}</span><span class="badge b-${esc(l.action)}">${esc(l.action)}</span>${esc(l.detail)}</div>`
+      ).join(''));
+      while(box.children.length > 400) box.removeChild(box.firstChild);
+      if(stick) box.scrollTop = box.scrollHeight;
+    }
+    lastLog = Math.max(lastLog, data.last);
+  }catch(e){}
+}
+
+async function refreshMemory(){
+  try{
+    const m = await j('/api/memory');
+    document.getElementById('knowledge').innerHTML =
+      (m.knowledge || '<i class="meta">暂无</i>');
+    document.getElementById('threads').innerHTML = m.threads.length ? m.threads.map(t =>
+      `<div class="mem-item"><span class="tag">帖${t.tid}</span>${t.entries.map(e =>
+        `<div class="kv"><span class="k2">${esc(e.who)}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`
+    ).join('') : '<i class="meta">暂无互动</i>';
+    document.getElementById('users').innerHTML = m.users.length ? m.users.map(u =>
+      `<div class="mem-item"><span class="tag">uid=${u.uid}</span>${esc(u.nick)} <span class="meta">互动 ${u.n} 次</span></div>`
+    ).join('') : '<i class="meta">暂无</i>';
+    document.getElementById('notes').innerHTML = m.notes.length ? m.notes.map(n =>
+      `<div class="mem-item"><span class="tag">${n.id}</span>${esc(n.text)}</div>`
+    ).join('') : '<i class="meta">暂无</i>';
+    document.getElementById('diary').innerHTML = m.diary.map(d =>
+      `<div class="mem-item">${esc(d)}</div>`).join('') || '<i class="meta">暂无</i>';
+    document.getElementById('queue').innerHTML = m.queue.length ? m.queue.map(q =>
+      `<div class="mem-item"><span class="tag">${Math.round(q.due_in_s/60)}分钟后</span>${esc(q.note)} <span class="meta">${q.steps} 步</span></div>`
+    ).join('') : '<i class="meta">队列空</i>';
+  }catch(e){}
+}
+
+async function refreshConsole(){
+  try{
+    const c = await j('/api/console');
+    const box = document.getElementById('console');
+    box.textContent = c.text;
+    box.scrollTop = box.scrollHeight;
+  }catch(e){}
+}
+
+function tick(){ document.getElementById('clock').textContent = new Date().toLocaleString('zh-CN',{hour12:false}); }
+setInterval(tick, 1000); tick();
+refreshState(); refreshLog(); refreshMemory(); refreshConsole();
+setInterval(refreshLog, 2000);
+setInterval(refreshConsole, 3000);
+setInterval(refreshState, 5000);
+setInterval(refreshMemory, 8000);
+</script>
+</body>
+</html>

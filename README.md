@@ -142,6 +142,19 @@ python tests/test_live_forum.py
 python tools/dry_run.py
 ```
 
+## Web 实时控制台
+
+\\ash
+python run.py dashboard     # http://127.0.0.1:8899（局域网用本机 IP）
+\
+单页暗色仪表盘（零前端依赖，2s 增量轮询）：
+- 顶部状态卡：循环数、今日发帖/评论/点赞配额进度条、知识条目数、静默时段指示
+- 实时动作流：彩色徽章（tool/feature/plan/comment/like/inbox/workflow…）增量推送
+- loop.log 控制台尾随视图
+- 记忆可视化：知识库（按 tag 分组带 threadcard 回链）、线程互动记忆（我说的/对方说的）、用户画像、记忆笔记、每日日记、工作流队列
+
+数据源 = state/agent_state.json（agent 每 15s 节流自动落盘）+ state/loop.log。
+
 ## 论坛 API 要点（完整版见 docs/API_REFERENCE.md）
 
 - API 根：`https://forum.mk49.top/bbs`，资源：`/bbs/resources/<filePath>`

@@ -93,11 +93,27 @@ class State:
 
     def log(self, action, detail=""):
         with self.lock:
+            seq = int(self.data.get("log_seq", 0)) + 1
+            self.data["log_seq"] = seq
             self.data["action_log"].append(
-                {"ts": time.time(), "action": action, "detail": str(detail)[:400]}
+                {"seq": seq, "ts": time.time(), "action": action,
+                 "detail": str(detail)[:400]}
             )
             if len(self.data["action_log"]) > 3000:
                 del self.data["action_log"][: len(self.data["action_log"]) - 3000]
+        self.autosave()
+
+    def autosave(self, min_interval=15.0):
+        """Persist at most every min_interval seconds (dashboard freshness)."""
+        now = time.time()
+        last = getattr(self, "_last_autosave", 0.0)
+        if now - last < min_interval:
+            return
+        self._last_autosave = now
+        try:
+            self.save()
+        except Exception:
+            pass
 
     def recent_actions(self, n=20, action=None):
         seq = self.data["action_log"]

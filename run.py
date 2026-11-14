@@ -102,6 +102,12 @@ def cmd_run():
     return 0
 
 
+def cmd_dashboard():
+    from mk49.dashboard import serve
+    serve()
+    return 0
+
+
 def cmd_learn():
     agent, cfg, llm = build_agent()
     agent.bootstrap()
@@ -137,6 +143,7 @@ def main(argv):
         "doctor": cmd_doctor,
         "digest": cmd_digest,
         "learn": cmd_learn,
+        "dashboard": cmd_dashboard,
         "demo-image": cmd_demo_image,
     }
     fn = table.get(cmd)
