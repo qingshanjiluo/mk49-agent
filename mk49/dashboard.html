@@ -1,183 +1,463 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" data-type="software">
 <head>
 <meta charset="utf-8">
-<title>mk49-agent 控制台</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="page-type" content="software">
+<meta name="site-kind" content="software">
+<title>mk49-agent Control Deck</title>
 <style>
-:root{--bg:#0d1117;--panel:#161b22;--line:#21262d;--fg:#c9d1d9;--dim:#8b949e;
---ok:#3fb950;--warn:#d29922;--err:#f85149;--acc:#58a6ff;--purple:#bc8cff}
+:root{
+  --bg:#0B0E14; --panel:#11151D; --panel2:#151A24; --line:#1E2531;
+  --fg:#D7DEE8; --dim:#7A8699; --dimmer:#4E5A6E;
+  --cyan:#22D3EE; --blue:#3B82F6; --green:#34D399; --amber:#F59E0B;
+  --red:#F87171; --pink:#FB7185; --sky:#38BDF8;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--fg);font:14px/1.5 "Segoe UI",system-ui,sans-serif;padding:16px}
-h1{font-size:18px;margin-bottom:4px}
-.sub{color:var(--dim);font-size:12px;margin-bottom:14px}
-.grid{display:grid;gap:12px}
-.cards{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:12px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
-.card .k{color:var(--dim);font-size:12px}
-.card .v{font-size:22px;font-weight:600;margin-top:2px}
-.card .v small{font-size:12px;color:var(--dim)}
-.cols{grid-template-columns:1fr 1fr}
-@media(max-width:900px){.cols{grid-template-columns:1fr}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
-.panel h2{font-size:13px;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--acc);background:#11161d}
-.panel .body{padding:10px 12px;max-height:420px;overflow-y:auto}
-.badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;margin-right:6px}
-.b-tool{background:#1c3a5e;color:var(--acc)}
-.b-feature{background:#2a1c5e;color:var(--purple)}
-.b-plan{background:#3a2d14;color:var(--warn)}
-.b-comment,.b-reply{background:#173b25;color:var(--ok)}
-.b-like,.b-digest{background:#3b1725;color:#ff7b72}
-.b-inbox,.b-inbox_reply{background:#14454a;color:#39d2c0}
-.b-workflow{background:#40321a;color:#e3b341}
-.b-safety_block,.b-error{background:#3b1725;color:var(--err)}
-.logline{padding:3px 0;border-bottom:1px dashed #1b2129;font-size:13px;white-space:pre-wrap;word-break:break-all}
-.logline .t{color:var(--dim);font-size:11px;margin-right:8px}
-.bar{height:6px;background:#21262d;border-radius:3px;overflow:hidden;margin-top:6px}
-.bar i{display:block;height:100%;background:var(--acc)}
-.mem-item{padding:6px 0;border-bottom:1px dashed #1b2129;font-size:13px}
-.mem-item .tag{color:var(--acc);font-size:11px;margin-right:6px}
-.mem-item .meta{color:var(--dim);font-size:11px}
-.kv{display:flex;gap:8px;font-size:13px;padding:2px 0}
-.kv .k2{color:var(--dim);min-width:90px}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
-.on{background:var(--ok)}.off{background:var(--err)}
-.live{color:var(--dim);font-size:11px;margin-left:8px}
+html,body{background:var(--bg);color:var(--fg)}
+body{font:14px/1.55 "Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:1440px;margin:0 auto;padding:0 32px}
+header{border-bottom:1px solid var(--line);background:rgba(17,21,29,.72);
+  backdrop-filter:blur(8px);position:sticky;top:0;z-index:10}
+.hd{display:flex;align-items:center;gap:14px;height:60px}
+.brand{font-weight:700;font-size:15px;letter-spacing:.02em;color:#fff}
+.brand span{color:var(--cyan);font-weight:500}
+.status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);
+  border:1px solid var(--line);background:var(--panel2);padding:4px 11px;
+  border-radius:99px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dimmer);flex:none}
+.dot.on{background:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.16)}
+.dot.off{background:var(--red);box-shadow:0 0 0 3px rgba(248,113,113,.14)}
+.hd .sp{flex:1}
+.clock{font-variant-numeric:tabular-nums;color:var(--dim);font-size:13px}
+
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin:24px 0 20px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px;transition:transform .18s ease,border-color .18s ease}
+.kpi:hover{transform:translateY(-2px);border-color:#2A3345}
+.kpi .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:6px}
+.kpi .num{font-size:26px;font-weight:700;color:#fff;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .sub{font-size:11px;color:var(--dimmer);margin-top:3px}
+.track{height:4px;background:#1A2130;border-radius:2px;margin-top:9px;overflow:hidden}
+.track i{display:block;height:100%;border-radius:2px;
+  background:linear-gradient(90deg,var(--blue),var(--cyan));
+  transition:width .6s cubic-bezier(.22,1,.36,1)}
+.track i.amber{background:linear-gradient(90deg,#B45309,var(--amber))}
+.track i.green{background:linear-gradient(90deg,#065F46,var(--green))}
+
+.charts{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-bottom:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:16px 18px;transition:transform .18s ease,border-color .18s ease}
+.card:hover{transform:translateY(-2px);border-color:#2A3345}
+.card h3{font-size:12px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--dim);font-weight:600;margin-bottom:14px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:88px}
+.bars .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;
+  height:100%;position:relative;cursor:default}
+.bars .col i{display:block;border-radius:2px 2px 0 0;min-height:2px;
+  background:var(--blue);transition:background .15s ease}
+.bars .col:hover i{background:var(--cyan)}
+.bars .col span{position:absolute;bottom:-16px;left:0;right:0;text-align:center;
+  font-size:9px;color:var(--dimmer)}
+.bars-x{height:16px}
+.type-list{display:flex;flex-direction:column;gap:7px}
+.type-row{display:grid;grid-template-columns:110px 1fr 34px;align-items:center;
+  gap:10px;font-size:12px}
+.type-row .nm{color:var(--fg);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font-family:ui-monospace,monospace}
+.type-row .tk{height:6px;background:#1A2130;border-radius:3px;overflow:hidden}
+.type-row .tk i{display:block;height:100%;border-radius:3px}
+.type-row .vl{color:var(--dim);text-align:right;font-variant-numeric:tabular-nums}
+.heat{display:flex;flex-wrap:wrap;gap:8px}
+.heat b{font-weight:500;padding:5px 10px;border-radius:6px;background:var(--panel2);
+  border:1px solid var(--line);color:var(--sky);transition:all .18s ease;cursor:default}
+.heat b:hover{border-color:var(--sky);transform:translateY(-2px)}
+.heat b.big{color:#fff;background:rgba(56,189,248,.14);border-color:rgba(56,189,248,.4);
+  font-weight:700;font-size:14px}
+
+.main{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;
+  padding-bottom:36px;align-items:start}
+.col-stack{display:flex;flex-direction:column;gap:14px}
+.stream-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.chip{font-size:11px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--dim);cursor:pointer;user-select:none;
+  transition:all .15s ease}
+.chip:hover{border-color:#3B82F6;color:var(--fg);transform:translateY(-1px)}
+.chip.on{background:rgba(59,130,246,.16);border-color:var(--blue);color:#93C5FD}
+.log{max-height:360px;overflow-y:auto;font-size:12.5px}
+.log::-webkit-scrollbar,.mem-body::-webkit-scrollbar,.cons::-webkit-scrollbar{
+  width:8px}
+.log::-webkit-scrollbar-thumb,.mem-body::-webkit-scrollbar-thumb,
+.cons::-webkit-scrollbar-thumb{background:#232B3A;border-radius:4px}
+.lrow{display:grid;grid-template-columns:58px 96px 1fr;gap:10px;
+  padding:6px 6px;border-bottom:1px solid #171D28;align-items:start;
+  border-radius:6px}
+.lrow:hover{background:#161C27}
+.lrow .tm{color:var(--dimmer);font-size:11px;font-variant-numeric:tabular-nums;
+  padding-top:1px}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;
+  border-radius:4px;font-family:ui-monospace,monospace;letter-spacing:.03em;
+  border:1px solid transparent;text-align:center;min-width:88px}
+.t-tool{background:rgba(59,130,246,.13);color:#93C5FD;border-color:rgba(59,130,246,.3)}
+.t-feature,.t-master{background:rgba(34,211,238,.12);color:#67E8F9;
+  border-color:rgba(34,211,238,.3)}
+.t-plan{background:rgba(245,158,11,.13);color:#FCD34D;
+  border-color:rgba(245,158,11,.3)}
+.t-comment,.t-reply,.t-inbox_reply,.t-thread_post{background:rgba(52,211,153,.13);
+  color:#6EE7B7;border-color:rgba(52,211,153,.3)}
+.t-like,.t-digest,.t-image_post{background:rgba(251,113,133,.13);color:#FDA4AF;
+  border-color:rgba(251,113,133,.3)}
+.t-inbox,.t-slot,.t-workflow,.t-script{background:rgba(45,211,238,.1);
+  color:#A5F3FC;border-color:rgba(45,211,238,.25)}
+.t-topic_heat,.t-learn,.t-note{background:rgba(122,134,153,.12);color:var(--dim);
+  border-color:rgba(122,134,153,.3)}
+.t-safety_block,.t-error{background:rgba(248,113,113,.14);color:#FCA5A5;
+  border-color:rgba(248,113,113,.35)}
+.lrow .dt{color:var(--fg);word-break:break-all;line-height:1.5}
+.lrow .dt .err{color:var(--red)}
+.cons{max-height:220px;overflow-y:auto;font:12px/1.6 ui-monospace,Consolas,
+  monospace;color:#9CA3AF;white-space:pre-wrap;word-break:break-all}
+
+.mem-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{font-size:11.5px;padding:5px 13px;border-radius:7px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--dim);cursor:pointer;transition:all .15s ease}
+.tab:hover{border-color:#3B82F6;color:var(--fg);transform:translateY(-1px)}
+.tab.on{background:#fff;color:#0B0E14;border-color:#fff;font-weight:600}
+.mem-body{max-height:560px;overflow-y:auto}
+.msec{padding:9px 0;border-bottom:1px dashed #1A2130}
+.msec:last-child{border-bottom:none}
+.msec .h{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#fff;
+  margin-bottom:3px}
+.msec .h .who{color:var(--cyan);font-weight:600}
+.msec .h .who.me{color:var(--amber)}
+.msec .h .meta{margin-left:auto;font-size:10.5px;color:var(--dimmer);
+  font-variant-numeric:tabular-nums}
+.msec .bd{font-size:12.5px;color:var(--fg);line-height:1.6}
+.msec .bd a{color:var(--sky);text-decoration:none;border-bottom:1px dashed;
+  cursor:pointer}
+.msec .bd a:hover{border-bottom-style:solid}
+.msec.indent{padding-left:18px;border-left:2px solid #1E2531;margin-left:4px}
+.empty{color:var(--dimmer);font-size:12.5px;padding:20px 0;text-align:center}
+.kb h4{color:var(--cyan);font-size:12px;margin:12px 0 6px;font-weight:600}
+.kb h4:first-child{margin-top:0}
+.kb div{font-size:12.5px;padding:5px 0;border-bottom:1px dashed #171D28;
+  color:var(--fg);line-height:1.55}
+.kb div b{color:#fff}
+.qrow{display:flex;align-items:center;gap:10px;padding:8px 0;
+  border-bottom:1px dashed #1A2130;font-size:12.5px}
+.qrow:last-child{border-bottom:none}
+.qrow .when{color:var(--amber);font-size:11px;min-width:66px;
+  font-variant-numeric:tabular-nums}
+.qrow .nt{color:var(--fg);flex:1}
+.qrow .st{color:var(--dimmer);font-size:11px}
+footer{border-top:1px solid var(--line);padding:16px 0;font-size:11.5px;
+  color:var(--dimmer);display:flex;justify-content:space-between}
+a{color:var(--sky);text-decoration:none}
+@media(max-width:1180px){.kpis{grid-template-columns:repeat(3,1fr)}
+  .charts{grid-template-columns:1fr}.main{grid-template-columns:1fr}}
+@media(max-width:720px){.wrap{padding:0 16px}.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<h1>🐉 mk49-agent 控制台 <span id="alive" class="live"></span></h1>
-<div class="sub">龙之归宿 · 幻想智能体 · <span id="clock"></span></div>
+<header>
+  <div class="wrap hd">
+    <div class="brand">mk49-agent <span>/ control deck</span></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="stxt">connecting</span></div>
+    <div class="status"><span class="dot" id="qdot"></span><span id="qtxt">day</span></div>
+    <div class="sp"></div>
+    <div class="clock" id="clock">--</div>
+  </div>
+</header>
 
-<div class="grid cards" id="cards"></div>
+<div class="wrap">
+  <div class="kpis" id="kpis"></div>
 
-<div class="grid cols">
-  <div>
-    <div class="panel">
-      <h2>⚡ 实时动作流 <span class="live">自动刷新</span></h2>
-      <div class="body" id="log"></div>
+  <div class="charts">
+    <div class="card">
+      <h3>24h action histogram</h3>
+      <div class="bars" id="hbars"></div>
+      <div class="bars-x"></div>
     </div>
-    <div class="panel">
-      <h2>🖥 控制台（loop.log）</h2>
-      <div class="body" id="console"></div>
+    <div class="card">
+      <h3>action types</h3>
+      <div class="type-list" id="types"></div>
     </div>
-    <div class="panel">
-      <h2>🗓 工作流队列 / 定时任务</h2>
-      <div class="body" id="queue"></div>
+    <div class="card">
+      <h3>topic heat</h3>
+      <div class="heat" id="heat"></div>
     </div>
   </div>
-  <div>
-    <div class="panel">
-      <h2>📚 知识库（论坛已学）</h2>
-      <div class="body" id="knowledge"></div>
+
+  <div class="main">
+    <div class="col-stack">
+      <div class="card">
+        <div class="stream-head">
+          <h3 style="margin:0;margin-right:6px">live action stream</h3>
+          <span class="chip on" data-f="all">all</span>
+          <span class="chip" data-f="tool">tool</span>
+          <span class="chip" data-f="comment">comment</span>
+          <span class="chip" data-f="like">like</span>
+          <span class="chip" data-f="inbox">inbox</span>
+          <span class="chip" data-f="feature">feature</span>
+          <span class="chip" data-f="plan">plan</span>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+      <div class="card">
+        <h3>process console (loop.log)</h3>
+        <div class="cons" id="console"></div>
+      </div>
     </div>
-    <div class="panel">
-      <h2>🧵 线程互动记忆</h2>
-      <div class="body" id="threads"></div>
-    </div>
-    <div class="panel">
-      <h2>👥 用户画像</h2>
-      <div class="body" id="users"></div>
-    </div>
-    <div class="panel">
-      <h2>📝 记忆笔记</h2>
-      <div class="body" id="notes"></div>
-    </div>
-    <div class="panel">
-      <h2>📖 每日日记</h2>
-      <div class="body" id="diary"></div>
+
+    <div class="col-stack">
+      <div class="card">
+        <div class="mem-tabs">
+          <span class="tab on" data-t="knowledge">knowledge</span>
+          <span class="tab" data-t="threads">thread memory</span>
+          <span class="tab" data-t="users">users</span>
+          <span class="tab" data-t="notes">notes</span>
+          <span class="tab" data-t="diary">diary</span>
+          <span class="tab" data-t="queue">workflow queue</span>
+        </div>
+        <div class="mem-body" id="mem"></div>
+      </div>
     </div>
   </div>
+
+  <footer>
+    <div>mk49-agent / autonomous forum agent</div>
+    <div id="fstat">--</div>
+  </footer>
 </div>
 
 <script>
-let lastLog = 0;
-const esc = s => (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmtT = ts => new Date(ts*1000).toLocaleTimeString('zh-CN',{hour12:false});
+var lastSeq=0, filter="all", tabk="knowledge", memCache={}, logRows=[];
+var COL={tool:"#3B82F6",comment:"#34D399",like:"#FB7185",feature:"#22D3EE",
+  plan:"#F59E0B",inbox:"#38BDF8",master:"#22D3EE",thread:"#34D399",
+  other:"#7A8699"};
 
-async function j(url){ const r = await fetch(url); return r.json(); }
+function esc(s){return (s||"").replace(/[&<>"]/g,function(c){
+  return {"&":"&","<":"<",">":"\"",'"':"""}[c];});}
+function tfmt(ts){var d=new Date(ts*1000);
+  return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)+
+  ":"+("0"+d.getSeconds()).slice(-2);}
+function get(u){return fetch(u).then(function(r){return r.json();});}
 
-function bar(used, limit){
-  if(!limit) return "";
-  const p = Math.min(100, Math.round(used/limit*100));
-  return `<div class="bar"><i style="width:${p}%"></i></div>`;
+function kpi(lbl,num,sub,pct,cls){
+  var bar=(pct==null)?"":'<div class="track"><i class="'+(cls||"")+
+    '" style="width:'+pct+'%"></i></div>';
+  return '<div class="kpi"><div class="lbl">'+lbl+'</div><div class="num">'+
+    num+'</div>'+(sub?'<div class="sub">'+sub+'</div>':"")+bar+'</div>';
 }
 
-async function refreshState(){
-  try{
-    const st = await j('/api/state');
-    document.getElementById('alive').innerHTML =
-      `<span class="dot ${st.alive?'on':'off'}"></span>${st.alive?'运行中':'疑似停止'}`;
-    const s = st.stats, d = st.today;
-    document.getElementById('cards').innerHTML = [
-      card('总循环', s.cycles||0),
-      card('今日评论', `${d.comments||0}<small>/${st.limits.comments}</small>` + bar(d.comments||0, st.limits.comments)),
-      card('今日发帖', `${d.threads||0}<small>/${st.limits.threads}</small>` + bar(d.threads||0, st.limits.threads)),
-      card('今日点赞', `${d.likes||0}<small>/${st.limits.likes}</small>`),
-      card('生图', s.images||0),
-      card('知识条目', st.knowledge_items||0),
-      card('记忆线程', st.mem_threads||0),
-      card('静默时段', st.quiet ? '🌙 夜间' : '☀️ 日间'),
-    ].join('');
-  }catch(e){}
+function renderState(st){
+  var s=st.stats||{}, d=st.today||{}, L=st.limits||{comments:50,threads:2,likes:15};
+  var cp=L.comments?Math.min(100,Math.round((d.comments||0)/L.comments*100)):0;
+  var tp=L.threads?Math.min(100,Math.round((d.threads||0)/L.threads*100)):0;
+  document.getElementById("kpis").innerHTML =
+    kpi("cycles",""+(s.cycles||0),"total since start")+
+    kpi("comments today",""+(d.comments||0),"limit "+L.comments,cp)+
+    kpi("threads today",""+(d.threads||0),"limit "+L.threads,tp,"amber")+
+    kpi("likes today",""+(d.likes||0),"quota 15",
+       Math.min(100,Math.round((d.likes||0)/15*100)),"green")+
+    kpi("knowledge",""+(st.knowledge_items||0),"forum facts learned")+
+    kpi("memory",(st.mem_threads||0)+" / "+(st.mem_users||0),
+       "threads / users");
+  document.getElementById("dot").className="dot "+(st.alive?"on":"off");
+  document.getElementById("stxt").textContent=st.alive?"running":"stale";
+  document.getElementById("qdot").className="dot "+(st.quiet?"off":"on");
+  document.getElementById("qtxt").textContent=st.quiet?"quiet hours":"day mode";
+  document.getElementById("fstat").textContent=
+    "knowledge "+st.knowledge_items+" / threads "+st.mem_threads+
+    " / users "+st.mem_users+" / notes "+st.notes;
 }
-const card = (k,v) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`;
 
-async function refreshLog(){
-  try{
-    const data = await j('/api/log?since=' + lastLog);
-    const box = document.getElementById('log');
-    if(data.items.length){
-      const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-      box.insertAdjacentHTML('beforeend', data.items.map(l =>
-        `<div class="logline"><span class="t">${fmtT(l.ts)}</span><span class="badge b-${esc(l.action)}">${esc(l.action)}</span>${esc(l.detail)}</div>`
-      ).join(''));
-      while(box.children.length > 400) box.removeChild(box.firstChild);
-      if(stick) box.scrollTop = box.scrollHeight;
+function renderStats(s){
+  var mx=Math.max.apply(null,(s.hours||[1]).concat([1])), h="";
+  for(var i=0;i<24;i++){
+    var v=s.hours[i]||0, pct=Math.round(v/mx*100);
+    h+='<div class="col" title="'+s.hour_labels[i]+":00 - "+v+' actions">'+
+      '<i style="height:'+Math.max(2,pct)+'%"></i>'+
+      ((i%6===0)?'<span>'+s.hour_labels[i]+'</span>':'<span></span>')+'</div>';
+  }
+  document.getElementById("hbars").innerHTML=h;
+
+  var tm=s.types||{}, keys=Object.keys(tm),
+    mx2=Math.max.apply(null,keys.map(function(k){return tm[k];}).concat([1])),
+    rows="";
+  for(var j=0;j<Math.min(8,keys.length);j++){
+    var k=keys[j], c=COL[k.split("_")[0]]||COL.other;
+    rows+='<div class="type-row"><span class="nm">'+esc(k)+'</span>'+
+      '<span class="tk"><i style="width:'+Math.round(tm[k]/mx2*100)+
+      '%;background:'+c+'"></i></span><span class="vl">'+tm[k]+'</span></div>';
+  }
+  document.getElementById("types").innerHTML=rows;
+
+  var ht=s.heat||{}, hk=Object.keys(ht);
+  if(hk.length){
+    var mx3=Math.max.apply(null,hk.map(function(k){return ht[k];})),
+      hb="";
+    for(var q=0;q<hk.length;q++){
+      var w=ht[hk[q]], big=w>=mx3;
+      hb+='<b class="'+(big?"big":"")+'" style="opacity:'+
+        (0.55+0.45*w/mx3)+'">'+esc(hk[q])+' <i style="font-style:normal;'+
+        'opacity:.65">'+w+'</i></b>';
     }
-    lastLog = Math.max(lastLog, data.last);
-  }catch(e){}
+    document.getElementById("heat").innerHTML=hb;
+  }
 }
 
-async function refreshMemory(){
-  try{
-    const m = await j('/api/memory');
-    document.getElementById('knowledge').innerHTML =
-      (m.knowledge || '<i class="meta">暂无</i>');
-    document.getElementById('threads').innerHTML = m.threads.length ? m.threads.map(t =>
-      `<div class="mem-item"><span class="tag">帖${t.tid}</span>${t.entries.map(e =>
-        `<div class="kv"><span class="k2">${esc(e.who)}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`
-    ).join('') : '<i class="meta">暂无互动</i>';
-    document.getElementById('users').innerHTML = m.users.length ? m.users.map(u =>
-      `<div class="mem-item"><span class="tag">uid=${u.uid}</span>${esc(u.nick)} <span class="meta">互动 ${u.n} 次</span></div>`
-    ).join('') : '<i class="meta">暂无</i>';
-    document.getElementById('notes').innerHTML = m.notes.length ? m.notes.map(n =>
-      `<div class="mem-item"><span class="tag">${n.id}</span>${esc(n.text)}</div>`
-    ).join('') : '<i class="meta">暂无</i>';
-    document.getElementById('diary').innerHTML = m.diary.map(d =>
-      `<div class="mem-item">${esc(d)}</div>`).join('') || '<i class="meta">暂无</i>';
-    document.getElementById('queue').innerHTML = m.queue.length ? m.queue.map(q =>
-      `<div class="mem-item"><span class="tag">${Math.round(q.due_in_s/60)}分钟后</span>${esc(q.note)} <span class="meta">${q.steps} 步</span></div>`
-    ).join('') : '<i class="meta">队列空</i>';
-  }catch(e){}
+function tagOf(a){
+  return '<span class="tag t-'+esc(a)+'">'+esc(a.replace(/_/g," "))+'</span>';
+}
+function fmtDetail(d){
+  var e=esc(d);
+  e=e.replace(/(https?:\/\/[^\s,<]{8,70})/g,
+    '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  e=e.replace(/\bERROR\b/g,'<span class="err">ERROR</span>');
+  e=e.replace(/\bBLOCKED\b/g,'<span class="err">BLOCKED</span>');
+  return e;
+}
+function rowHTML(l){
+  return '<div class="lrow" data-a="'+esc(l.action)+'">'+
+    '<span class="tm">'+tfmt(l.ts)+'</span>'+tagOf(l.action)+
+    '<span class="dt">'+fmtDetail(l.detail)+'</span></div>';
+}
+function applyFilter(){
+  var box=document.getElementById("log"), html="";
+  for(var i=0;i<logRows.length;i++){
+    var l=logRows[i];
+    if(filter==="all"||l.action.indexOf(filter)===0||
+       (filter==="comment"&&l.action.indexOf("reply")>=0)){
+      html+=rowHTML(l);
+    }
+  }
+  box.innerHTML=html||'<div class="empty">no actions yet</div>';
+  box.scrollTop=box.scrollHeight;
+}
+function refreshLog(){
+  get("/api/log?since="+lastSeq).then(function(d){
+    if(d.items&&d.items.length){
+      logRows=logRows.concat(d.items);
+      if(logRows.length>400) logRows=logRows.slice(-400);
+      lastSeq=Math.max(lastSeq,d.last||0);
+      applyFilter();
+    }
+  }).catch(function(){});
 }
 
-async function refreshConsole(){
-  try{
-    const c = await j('/api/console');
-    const box = document.getElementById('console');
-    box.textContent = c.text;
-    box.scrollTop = box.scrollHeight;
-  }catch(e){}
+function renderMem(m){
+  memCache=m;
+  var box=document.getElementById("mem"), h="", i;
+  if(tabk==="knowledge"){
+    box.innerHTML=m.knowledge?
+      '<div class="kb">'+m.knowledge+'</div>':
+      '<div class="empty">knowledge base empty</div>';
+    return;
+  }
+  if(tabk==="threads"){
+    for(i=0;i<m.threads.length;i++){
+      var t=m.threads[i];
+      h+='<div class="msec"><div class="h"><span class="who">thread '+
+        t.tid+'</span><span class="meta">'+t.entries.length+' entries</span></div>';
+      for(var j=0;j<t.entries.length;j++){
+        var e=t.entries[j], mine=(e.who==="me");
+        h+='<div class="msec'+(j>0?" indent":"")+'"><div class="h">'+
+          '<span class="who'+(mine?" me":"")+'">'+esc(e.who)+'</span></div>'+
+          '<div class="bd">'+esc(e.text)+'</div></div>';
+      }
+      h+='</div>';
+    }
+    box.innerHTML=h||'<div class="empty">no thread memories</div>';
+    return;
+  }
+  if(tabk==="users"){
+    for(i=0;i<m.users.length;i++){
+      var p=m.users[i];
+      h+='<div class="msec"><div class="h"><span class="who">uid '+p.uid+
+        '</span><span class="meta">'+p.n+' interactions</span></div>'+
+        '<div class="bd">'+esc(p.nick)+'</div></div>';
+    }
+    box.innerHTML=h||'<div class="empty">no users remembered</div>';
+    return;
+  }
+  if(tabk==="notes"){
+    for(i=0;i<m.notes.length;i++){
+      h+='<div class="msec"><div class="h"><span class="who">'+m.notes[i].id+
+        '</span><span class="meta">'+(m.notes[i].tags||[]).join(", ")+
+        '</span></div><div class="bd">'+esc(m.notes[i].text)+'</div></div>';
+    }
+    box.innerHTML=h||'<div class="empty">no notes</div>';
+    return;
+  }
+  if(tabk==="diary"){
+    for(i=0;i<m.diary.length;i++){
+      h+='<div class="qrow"><span class="nt">'+esc(m.diary[i])+'</span></div>';
+    }
+    box.innerHTML=h||'<div class="empty">no diary yet</div>';
+    return;
+  }
+  for(i=0;i<m.queue.length;i++){
+    var Q=m.queue[i],
+      mins=Math.max(0,Math.round(Q.due_in_s/60));
+    h+='<div class="qrow"><span class="when">'+(mins>0?mins+"m":"due")+
+      '</span><span class="nt">'+esc(Q.note)+'</span>'+
+      '<span class="st">'+Q.steps+' steps</span></div>';
+  }
+  box.innerHTML=h||'<div class="empty">queue empty</div>';
 }
 
-function tick(){ document.getElementById('clock').textContent = new Date().toLocaleString('zh-CN',{hour12:false}); }
-setInterval(tick, 1000); tick();
-refreshState(); refreshLog(); refreshMemory(); refreshConsole();
-setInterval(refreshLog, 2000);
-setInterval(refreshConsole, 3000);
-setInterval(refreshState, 5000);
-setInterval(refreshMemory, 8000);
+function refreshConsole(){
+  get("/api/console").then(function(c){
+    var el=document.getElementById("console"),
+      stick=el.scrollHeight-el.scrollTop-el.clientHeight<40;
+    el.textContent=c.text;
+    if(stick) el.scrollTop=el.scrollHeight;
+  }).catch(function(){});
+}
+
+function tick(){
+  var d=new Date();
+  document.getElementById("clock").textContent=
+    d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+
+    ("0"+d.getDate()).slice(-2)+"  "+("0"+d.getHours()).slice(-2)+":"+
+    ("0"+d.getMinutes()).slice(-2)+":"+("0"+d.getSeconds()).slice(-2);
+}
+tick(); setInterval(tick,1000);
+
+Array.prototype.forEach.call(document.querySelectorAll(".chip"),function(el){
+  el.addEventListener("click",function(){
+    Array.prototype.forEach.call(document.querySelectorAll(".chip"),
+      function(c){c.classList.remove("on");});
+    el.classList.add("on");
+    filter=el.getAttribute("data-f");
+    applyFilter();
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(el){
+  el.addEventListener("click",function(){
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"),
+      function(c){c.classList.remove("on");});
+    el.classList.add("on");
+    tabk=el.getAttribute("data-t");
+    renderMem(memCache);
+  });
+});
+
+get("/api/state").then(renderState).catch(function(){});
+get("/api/stats").then(renderStats).catch(function(){});
+refreshLog();
+get("/api/memory").then(renderMem).catch(function(){});
+refreshConsole();
+setInterval(refreshLog,2000);
+setInterval(refreshConsole,3000);
+setInterval(function(){get("/api/state").then(renderState).catch(function(){});},5000);
+setInterval(function(){get("/api/stats").then(renderStats).catch(function(){});},15000);
+setInterval(function(){get("/api/memory").then(renderMem).catch(function(){});},8000);
 </script>
 </body>
 </html>
