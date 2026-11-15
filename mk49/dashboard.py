@@ -170,6 +170,11 @@ def _md_to_html(md):
     for line in (md or "").splitlines():
         ln = escape(line)
         ln = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", ln)
+        for _en, _cn in (("MK48/MK49 gameplay", "MK48/MK49 游戏"),
+                         ("Forum info", "论坛信息"), ("Rules", "版规"),
+                         ("Tips", "技巧"), ("Culture/memes", "黑话梗"),
+                         ("Formatting", "排版用法"), ("Updated:", "更新于:")):
+            ln = ln.replace(_en, _cn)
         if ln.startswith("## "):
             out.append("<div style='color:#58a6ff;margin-top:6px'><b>%s</b></div>"
                        % ln[3:])
