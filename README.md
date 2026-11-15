@@ -148,7 +148,8 @@ python tools/dry_run.py
 `mk49-agent-dashboard` 已放行 TCP 8899；本机开发用 http://127.0.0.1:8899）。
 
 
-```bashpython run.py dashboard     # http://127.0.0.1:8899（局域网用本机 IP）
+```bash
+python run.py dashboard     # http://127.0.0.1:8899（局域网用本机 IP）
 单页暗色仪表盘（零前端依赖，2s 增量轮询）：
 - 顶部状态卡：循环数、今日发帖/评论/点赞配额进度条、知识条目数、静默时段指示
 - 实时动作流：彩色徽章（tool/feature/plan/comment/like/inbox/workflow…）增量推送
