@@ -196,11 +196,23 @@ class Agent:
 
     # ------------------------------------------------ skills
     def refresh_skills(self):
-        """Load skills/*.txt into the LLM system prompt knowledge."""
+        """Re-read knowledge.md + skills/*.txt into the LLM system prompt."""
         import os
+        parts = []
+        # knowledge base (fresh, so edits show up immediately)
+        kb_path = (self.cfg.get("knowledge_file") or "state/knowledge.json")
+        kb_md = os.path.splitext(kb_path)[0] + ".md"
+        try:
+            with open(kb_md, "r", encoding="utf-8", errors="replace") as fh:
+                kb_txt = fh.read().strip()
+            if kb_txt:
+                parts.append(kb_txt)
+        except OSError:
+            pass
+        # skills dir
         skills_dir = os.path.join(os.path.dirname(os.path.dirname(
             os.path.abspath(__file__))), "skills")
-        parts = []
+        skill_blocks = []
         try:
             for fn in sorted(os.listdir(skills_dir)):
                 if fn.endswith(".txt"):
@@ -208,11 +220,12 @@ class Agent:
                               encoding="utf-8", errors="replace") as fh:
                         body = fh.read().strip()
                     if body:
-                        parts.append("[skill:%s]\n%s" % (fn[:-4], body))
+                        skill_blocks.append("[skill:%s]\n%s" % (fn[:-4], body))
         except OSError:
             pass
-        base = self.llm.knowledge_text.split("[skill:", 1)[0]
-        self.llm.knowledge_text = (base + "\n\n" + "\n\n".join(parts)).strip()
+        if skill_blocks:
+            parts.extend(skill_blocks)
+        self.llm.knowledge_text = "\n\n".join(parts).strip()
 
     # ------------------------------------------------ schedules
     def is_quiet_now(self):

@@ -70,6 +70,104 @@ class KnowledgeBase:
             self.data["format_stats"][key] = \
                 self.data["format_stats"].get(key, 0) + int(n)
 
+    # ---------------- CRUD for self-update tools ----------------
+    @staticmethod
+    def _max_kid(items):
+        nums = []
+        for it in items:
+            k = str(it.get("kid") or "")
+            if k.startswith("K") and k[1:].isdigit():
+                nums.append(int(k[1:]))
+        return max(nums) if nums else 0
+
+    def _assign_kids(self):
+        nxt = self._max_kid(self.data["items"])
+        for it in self.data["items"]:
+            if not it.get("kid"):
+                nxt += 1
+                it["kid"] = "K%03d" % nxt
+
+    def by_id(self, kid):
+        kid = str(kid or "").strip().upper().strip(":：., ")
+        if kid and not kid.startswith("K"):
+            kid = "K" + kid.lstrip("Kk")
+        for it in self.data["items"]:
+            if str(it.get("kid", "")).upper() == kid:
+                return it
+        return None
+
+    def add(self, topic, fact, tags=None, source=None):
+        topic = (topic or "").strip()[:60]
+        fact = (fact or "").strip()[:400]
+        if not topic or not fact:
+            return False, "topic and fact are required"
+        for it in self.data["items"]:
+            if it.get("topic") == topic:
+                return False, "topic already exists as %s" % it.get("kid")
+        kid = "K%03d" % (self._max_kid(self.data["items"]) + 1)
+        self.data["items"].append({
+            "kid": kid, "topic": topic, "fact": fact,
+            "tags": [t for t in (tags or []) if t in TAGS][:3] or ["forum"],
+            "source": source,
+            "day": date.today().isoformat(),
+        })
+        return True, kid
+
+    def edit(self, kid, topic=None, fact=None, tags=None):
+        it = self.by_id(kid)
+        if not it:
+            return False, "no entry %s (run kb_list first)" % kid
+        if topic:
+            it["topic"] = str(topic).strip()[:60]
+        if fact:
+            it["fact"] = str(fact).strip()[:400]
+        if tags:
+            tt = [t for t in tags if t in TAGS][:3]
+            if tt:
+                it["tags"] = tt
+        it["day"] = date.today().isoformat()
+        return True, it
+
+    def delete(self, kid):
+        it = self.by_id(kid)
+        if not it:
+            return False, "no entry %s (run kb_list first)" % kid
+        self.data["items"].remove(it)
+        return True, it
+
+    def search(self, query, limit=15):
+        q = (query or "").lower()
+        out = []
+        for it in self.data["items"]:
+            blob = ("%s %s %s" % (it.get("topic", ""), it.get("fact", ""),
+                                  " ".join(it.get("tags", [])))).lower()
+            if q in blob:
+                out.append(it)
+                if len(out) >= limit:
+                    break
+        return out
+
+    def listing(self, query=None, limit=15):
+        if query:
+            return self.search(query, limit)
+        return self.data["items"][-limit:]
+
+    def persist(self, agent=None):
+        """Save json + regenerate md + hot-reload into system prompt."""
+        self._assign_kids()
+        self.data["updated"] = date.today().isoformat()
+        self.save()
+        md_path = os.path.splitext(self.path)[0] + ".md"
+        with open(md_path, "w", encoding="utf-8") as fh:
+            fh.write(self.to_markdown())
+        if agent is not None:
+            try:
+                agent.refresh_skills()
+            except Exception:
+                pass
+        return md_path
+
+
     def prompt_digest(self, limit=1400):
         """Compact text injected into the system prompt."""
         lines = []
@@ -103,7 +201,8 @@ class KnowledgeBase:
             out.append("")
             for it in items[-25:]:
                 src = (" ([threadcard:%s])" % it["source"]) if it.get("source") else ""
-                out.append("- **%s**: %s%s" % (it["topic"], it["fact"], src))
+                kid = ("[%s] " % it["kid"]) if it.get("kid") else ""
+                out.append("- **%s%s**: %s%s" % (kid, it["topic"], it["fact"], src))
             out.append("")
         return "\n".join(out)
 
@@ -209,10 +308,7 @@ class Learner:
                 if scanned % 5 == 0:
                     agent.log("learned %d/%d threads..." % (scanned, max_threads))
         self.kb.data["updated"] = date.today().isoformat()
-        self.kb.save()
-        md_path = os.path.splitext(self.kb.path)[0] + ".md"
-        with open(md_path, "w", encoding="utf-8") as fh:
-            fh.write(self.kb.to_markdown())
+        md_path = self.kb.persist(agent)   # assigns kids + hot-reloads prompt
         agent.log("knowledge pass done: %d threads, +%d items (total %d)"
                   % (scanned, added, len(self.kb.data["items"])))
         return {"threads": scanned, "added": added,

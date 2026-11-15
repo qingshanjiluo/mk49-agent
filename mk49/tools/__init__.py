@@ -1,9 +1,9 @@
-from .base import Tool, ToolRegistry, schema, jdump  # noqa: F401
-from . import (basic, forum, image_tools, webtools, auto, memory_tools, vision)  # noqa: F401
+﻿from .base import Tool, ToolRegistry, schema, jdump  # noqa: F401
+from . import (basic, forum, image_tools, webtools, auto, memory_tools, vision, knowledge_tools)  # noqa: F401
 
 
 def build_registry():
     reg = ToolRegistry()
-    for mod in (basic, forum, image_tools, webtools, auto, memory_tools, vision):
+    for mod in (basic, forum, image_tools, webtools, auto, memory_tools, vision, knowledge_tools):
         mod.register_all(reg)
     return reg
