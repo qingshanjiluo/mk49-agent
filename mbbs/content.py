@@ -4,6 +4,11 @@ import html as html_mod
 import re
 
 IMG_RE = re.compile(r'<img[^>]+src=["\'](.*?)["\']', re.I | re.S)
+IMG_MD_RE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
+
+
+def extract_md_images(text, limit=6):
+    return IMG_MD_RE.findall(text or "")[:limit]
 URL_RE = re.compile(r'https?://[^\s<>"\')]+', re.I)
 EMOJI_RE = re.compile(r":[a-z0-9_]{1,30}:")
 CARD_RE = re.compile(r"\[(threadcard|usercard):([1-9]\d*)\]")

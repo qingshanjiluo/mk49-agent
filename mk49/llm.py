@@ -312,6 +312,107 @@ class ChatClient:
         )
         return self.text(prompt, tier="smart", max_tokens=800)
 
+    # models confirmed to accept image input (cordis config: input text+image)
+    VISION_CHAIN = [
+        "selfdeploy/mimo-v2.6-flash",
+        "selfdeploy/deepseek-v4.1-flash-free",
+        "selfdeploy/deepseek-v4-flash",
+        "selfdeploy/glm-5.3-flash",
+        "selfdeploy/qwen3.8-flash-next",
+    ]
+
+    def _ocr_fallback(self, raw_bytes, question):
+        """Chat-vision models are flaky on this gateway (400/timeouts);
+        deepseek-ocr accepts images reliably. OCR the picture, then
+        answer the question from the extracted text."""
+        import base64
+        try:
+            from .images import to_png_bytes
+            small = to_png_bytes(raw_bytes, max_width=640)
+            url = "data:image/png;base64," + base64.b64encode(
+                small).decode('ascii')
+            payload = {
+                "model": "deepseek-ocr",
+                "messages": [{"role": "user", "content": [
+                    {"type": "text",
+                     "content": "Extract every visible text from this "
+                                 "image, in order. If none, reply NO."},
+                    {"type": "image_url", "image_url": {"url": url}}]}],
+                "max_tokens": 240, "temperature": 0.1, "stream": False,
+            }
+            r = self.session.post(
+                self.base_url + '/chat/completions',
+                headers={'Authorization': 'Bearer ' + self.key,
+                         'Content-Type': 'application/json'},
+                json=payload, timeout=max(self.timeout, 75))
+            d = r.json()
+            if "error" in d or r.status_code >= 400:
+                return ""
+            txt = (d["choices"][0]["message"].get("content") or "")
+            txt = txt.strip()
+        except Exception as exc:
+            print("[vision] ocr fallback failed: %s" % str(exc)[:100])
+            return ""
+        if not txt or txt.upper() == "NO" or len(txt) < 2:
+            return ""
+        prompt = ("论坛帖子配图的 OCR 提取文字：%s\n"
+                  "问题：%s\n"
+                  "用一句中文描述这张图可能是什么（结合文字与问题推断，"
+                  "不超过 60 字，只输出描述）。"
+                  % (txt[:400], question[:160]))
+        try:
+            return self.text(prompt, tier='smart', max_tokens=160,
+                              temperature=0.4)
+        except Exception:
+            return ""
+
+
+    def describe_image_bytes(self, raw_bytes, question, timeout=90):
+        """Vision call trying a model chain; returns "" if all fail."""
+        import base64
+        if not raw_bytes:
+            return ""
+        from .images import _ext_for
+        ext = _ext_for("", raw_bytes)
+        mime = "image/" + ("jpeg" if ext == "jpg" else ext)
+        data = "data:%s;base64,%s" % (
+            mime, base64.b64encode(raw_bytes).decode("ascii"))
+        headers = {"Authorization": "Bearer " + self.key,
+                   "Content-Type": "application/json"}
+        order = [self.smart_model] + [
+            m for m in self.VISION_CHAIN if m != self.smart_model]
+        last = ""
+        for model in dict.fromkeys(order):
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": [
+                    {"type": "text", "content": question},
+                    {"type": "image_url", "image_url": {"url": data}},
+                ]}],
+                "max_tokens": 300,
+                "temperature": 0.3,
+                "stream": False,
+            }
+            try:
+                r = self.session.post(self.base_url + "/chat/completions",
+                                      headers=headers, json=payload,
+                                      timeout=max(self.timeout, timeout))
+                d = r.json()
+                if "error" in d or r.status_code >= 400:
+                    last = "%s: %s" % (model, str(d.get("error", r.status_code))[:80])
+                    continue
+                msg = d["choices"][0]["message"]
+                out = (msg.get("content") or "").strip()
+                if out:
+                    return out
+                last = "%s: empty" % model
+            except Exception as exc:
+                last = "%s: %s" % (model, str(exc)[:80])
+        print("[vision] chain failed: %s" % last)
+        # last resort: OCR channel (deepseek-ocr accepts images reliably)
+        out = self._ocr_fallback(raw_bytes, question)
+        return out
+
     def image_prompt_for(self, topic, title=""):
         prompt = (
             "把下面的中文内容改写成一句英文的文生图提示词（image prompt）。\n"

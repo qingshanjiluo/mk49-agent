@@ -248,7 +248,10 @@ class Agent:
         """Time-driven actions independent of the LLM plan."""
         from datetime import datetime
         hour = datetime.now().hour
-        if 9 <= hour < 23 and self.state.daily_count("digest") == 0:
+        # 每日晚上发速览（20:00 起；0-1 点补漏）
+        evening = (hour >= int(self.cfg.get("digest_hour", 20))
+                   or hour <= 1)
+        if evening and self.state.daily_count("digest") == 0:
             plan["daily_digest"] = True
         else:
             plan.setdefault("daily_digest", False)
@@ -440,6 +443,18 @@ class Agent:
         for tid, c in self.obs.new_comments:
             if c.get("id"):
                 self.state.mark_post(c["id"])
+        # ensure one evening digest exists today (workflow fallback)
+        try:
+            from datetime import datetime as _dt
+            _h = _dt.now().hour
+            if (self.state.daily_count("digest") == 0
+                    and (_h >= 20 or _h <= 1)):
+                self.workflow.enqueue(
+                    "daily_digest", run_at=None,
+                    payload={"daily_digest": True},
+                    note="evening hot-thread digest")
+        except Exception:
+            pass
         # daily memory diary (retention of the full decision flow)
         try:
             self.memory.daily_summary(
@@ -469,10 +484,18 @@ class Agent:
                 when = last_seen._last_comment_time(self, t)
                 if when:
                     mine = " | my_last_comment=" + when
-            rows.append("thread id=%s | %s | replies=%s | floors=%s%s"
+            imgs = 0
+            try:
+                from mk49.tools.vision import extract_thread_images
+                imgs = len(extract_thread_images(
+                    t.get("_body_html") or t.get("_content_html")
+                    or "", limit=6))
+            except Exception:
+                imgs = 0
+            rows.append("thread id=%s | %s | replies=%s | floors=%s | images=%s%s"
                         % (t.get("id"), truncate(t.get("title", ""), 36),
                            t.get("reply_count"),
-                           len(t.get("_comments") or []), mine))
+                           len(t.get("_comments") or []), imgs, mine))
         if o.mention_hits:
             rows.append("mentions: %s" % len(o.mention_hits))
         return "\n".join(rows)
@@ -491,7 +514,9 @@ class Agent:
             "scheduled thread; 3) use mem_write for anything worth "
             "remembering; 4) be economical: 1-4 tool calls is usually "
             "enough; 5) never reveal being a bot; 6) night quiet hours "
-            "block writes automatically. Finish with a one-line summary.")
+            "block writes automatically. "
+            "Tips: for image-heavy threads call forum_read_thread_images first to see what is actually posted; the daily hot-thread digest is scheduled for the evening - do not create extra digests yourself. "
+            "Finish with a one-line summary.")
         messages = [
             {"role": "system", "content": sys_text},
             {"role": "user", "content":
