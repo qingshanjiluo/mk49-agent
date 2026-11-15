@@ -145,10 +145,10 @@ python tools/dry_run.py
 ## Web 实时控制台
 
 局域网访问：**http://192.168.1.2:8899**（服务绑定 0.0.0.0，防火墙入站规则
-\mk49-agent-dashboard\ 已放行 TCP 8899；本机开发用 http://127.0.0.1:8899）。
+`mk49-agent-dashboard` 已放行 TCP 8899；本机开发用 http://127.0.0.1:8899）。
 
 
-\\ash
+\\\\ash
 python run.py dashboard     # http://127.0.0.1:8899（局域网用本机 IP）
 \
 单页暗色仪表盘（零前端依赖，2s 增量轮询）：
