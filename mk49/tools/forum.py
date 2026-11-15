@@ -289,10 +289,84 @@ class MyThreads(Tool):
         return jdump(rows)
 
 
+class ListCategories(Tool):
+    name = "forum_list_categories"
+    description = ("List all forum boards with id/name, whether this "
+                   "account can post in each, and view permission. "
+                   "Use before choosing a board for create_thread.")
+    params = schema({}, required=[])
+
+    def run(self, agent):
+        try:
+            cats = agent.client.categories()
+        except Exception as exc:
+            return "ERROR: %s" % str(exc)[:120]
+        perms = getattr(agent, "my_perms", set())
+        rows = []
+        for c in cats or []:
+            cid = c.get("id")
+            if c.get("hidden"):
+                continue
+            rows.append({
+                "id": cid,
+                "name": c.get("name"),
+                "can_post": ("category%s.createThread" % cid) in perms,
+                "can_view": ("category%s.viewThreads" % cid) in perms,
+            })
+        return jdump(rows)
+
+
+class ReadBoard(Tool):
+    name = "forum_read_board"
+    description = ("Browse one board by heat or recency. Use to "
+                   "explore non-chat boards: tutorials, science, "
+                   "fleet, feedback, archives, newbie.")
+    params = schema({
+        "category_id": ("integer", "board id"),
+        "sort": ("string", "hot (default) | newest | fresh"),
+        "limit": ("integer", "max threads, default 10"),
+    }, required=["category_id"])
+    max_result = 3000
+
+    def run(self, agent, category_id=0, sort="hot", limit=10):
+        limit = min(int(limit or 10), 30)
+        smap = {"newest": "-created_at", "fresh": "-posted_at",
+                "hot": "-view_count"}
+        s = smap.get(sort, "-view_count")
+        try:
+            rows, total = agent.client.list_threads(
+                category_id=int(category_id), page_limit=limit, sort=s)
+        except Exception as exc:
+            return "ERROR: %s" % str(exc)[:160]
+        names = {}
+        try:
+            names = {c.get("id"): c.get("name")
+                     for c in (agent.client.categories() or [])}
+        except Exception:
+            pass
+        out = {"board": "%s(%s)" % (names.get(category_id, "?"),
+                                      category_id),
+               "total": total, "threads": []}
+        for t in rows:
+            title = t.get("title") or ""
+            out["threads"].append({
+                "id": t.get("id"),
+                "title": title[:40],
+                "replies": t.get("reply_count"),
+                "views": t.get("view_count"),
+                "likes": t.get("like_count"),
+                "pinned": bool(t.get("is_sticky")),
+                "author": ((t.get("user") or {}).get("nickname")
+                           or "")[:20],
+            })
+        return jdump(out)
+
+
 def register_all(reg):
     for t in (ReadThreads(), ReadThreadDetail(), ReadComments(),
               LikeThread(), LikePost(), CreateThread(), EditThread(),
               DeleteThread(), CommentThread(), ReplyComment(),
               DeleteComment(), StickyComment(), ReadInbox(),
-              UserProfile(), MyThreads()):
+              UserProfile(), MyThreads(), ListCategories(),
+              ReadBoard()):
         reg.register(t)

@@ -306,7 +306,7 @@ class Agent:
             "{\n"
             '  "reply_targets": [{"thread": <帖子id>, "post": <楼层id或0表示整帖>}],\n'
             '  "create_thread": true/false,\n'
-            '  "thread_category": <板块id>,\n'
+            '  "thread_category": 板块id(从target_categories里选最贴的),\n'
             '  "thread_topic": "<一句话主题，10-30字>",\n'
             '  "image_thread": true/false,\n'
             '  "like": true/false, "vote": true/false, "welcome": true/false\n'
@@ -318,7 +318,8 @@ class Agent:
             "3b. floors show [id=...] - pick a SPECIFIC floor; you may START a new nested thread, not only answer your own;\n"
             "3c. my_last_comment = you already spoke today - usually do NOT reply twice unless asked directly.\n"
             "4. 没有值得回的就不回（reply_targets 给 []）。\n"
-            "5. 同一轮不要超过 3 个目标。\n\n"
+            "5. 同一轮不要超过 3 个目标。\n"
+            "6. thread_category 从 target 里选最贴主题的板块：聊天(2)日常、反馈(5)问题建议、教程(16)教学、舰队(39)招新活动、科普(36)科普，别都塞聊天。\n"
             "观察：\n" + json.dumps(digest, ensure_ascii=False, indent=1)
         )
         for _ in range(retries):
@@ -492,8 +493,10 @@ class Agent:
                     or "", limit=6))
             except Exception:
                 imgs = 0
-            rows.append("thread id=%s | %s | replies=%s | floors=%s | images=%s%s"
-                        % (t.get("id"), truncate(t.get("title", ""), 36),
+            rows.append("thread id=%s | board=%s | %s | replies=%s | floors=%s | images=%s%s"
+                        % (t.get("id"),
+                           (o.category_names or {}).get(t.get("category_id"), ""),
+                           truncate(t.get("title", ""), 36),
                            t.get("reply_count"),
                            len(t.get("_comments") or []), imgs, mine))
         if o.mention_hits:
@@ -515,7 +518,7 @@ class Agent:
             "remembering; 4) be economical: 1-4 tool calls is usually "
             "enough; 5) never reveal being a bot; 6) night quiet hours "
             "block writes automatically. "
-            "Tips: for image-heavy threads call forum_read_thread_images first to see what is actually posted; the daily hot-thread digest is scheduled for the evening - do not create extra digests yourself. "
+            "Tips: for image-heavy threads call forum_read_thread_images first to see what is actually posted; Explore NON-chat boards with forum_read_board (tutorials/science/fleet/feedback) and reply there too - chat is not the only board; call forum_list_categories before posting to pick the right board. the daily hot-thread digest is scheduled for the evening - do not create extra digests yourself. "
             "Finish with a one-line summary.")
         messages = [
             {"role": "system", "content": sys_text},
