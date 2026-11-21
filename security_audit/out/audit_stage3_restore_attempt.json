@@ -1,0 +1,39 @@
+{
+ "time": "2026-11-15 16:40:58",
+ "attempts": [
+  {
+   "key": "site_name",
+   "result": "OK",
+   "resp": {
+    "name": "UIError",
+    "message": "无权操作",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new UIError (/root/minibbs-server/utils/ui-error.ts:5:5)\n    at ManageController.<anonymous> (/root/minibbs-server/routes/bbs/controllers/SettingController.ts:37:45)\n    at Generator.next (<anonymous>)\n    at fulfilled (/root/minibbs-server/routes/bbs/controllers/SettingController.ts:17:58)"
+   }
+  },
+  {
+   "key": "site_introduction",
+   "result": "OK",
+   "resp": {
+    "name": "UIError",
+    "message": "无权操作",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new UIError (/root/minibbs-server/utils/ui-error.ts:5:5)\n    at ManageController.<anonymous> (/root/minibbs-server/routes/bbs/controllers/SettingController.ts:37:45)\n    at Generator.next (<anonymous>)\n    at fulfilled (/root/minibbs-server/routes/bbs/controllers/SettingController.ts:17:58)\n    at runMicrotasks (<anonymous>)\n    at processTicksAndRejections (node:internal/process/task_queues:96:5)"
+   }
+  },
+  {
+   "key": "site_custom_append_body_html",
+   "result": "OK",
+   "resp": {
+    "name": "UIError",
+    "message": "无权操作",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new UIError (/root/minibbs-server/utils/ui-error.ts:5:5)\n    at ManageController.<anonymous> (/root/minibbs-server/routes/bbs/controllers/SettingController.ts:37:45)\n    at Generator.next (<anonymous>)\n    at fulfilled (/root/minibbs-server/routes/bbs/controllers/SettingController.ts:17:58)\n    at runMicrotasks (<anonymous>)\n    at processTicksAndRejections (node:internal/process/task_queues:96:5)"
+   }
+  }
+ ],
+ "after_check": {
+  "site_name": "hk by jz",
+  "site_introduction": "HK BY JZ - QQ 3783129055 / Q群 1080785768",
+  "site_custom_append_body_html": "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>HK BY JZ</title>\n<style>\n  /* 注入到论坛 SPA 时的覆盖 */\n  #root{display:none!important}\n  html,body{margin:0!important;padding:0!important;background:#050506!important;overflow:hidden!important}\n  #jz-root{position:fixed;inset:0;z-index:2147483647;background:#050506;overflow:auto;-webkit-overflow-scrolling:touch}\n  *{margin:0;padding:0;box-sizing:border-box}\n  html,body{height:100%;background:#050506;color:#ececef;\n    font-family:-apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Helvetica Neue\",\"Microsoft YaHei\",sans-serif;\n    -webkit-font-smoothing:antialiased;overflow:hidden}\n  .bg{position:fixed;inset:0;\n    background:\n      radial-gradient(900px 500px at 50% -12%,rgba(255,45,85,.16),transparent 62%),\n      linear-gradient(180deg,#08080b 0%,#050506 55%,#08080b 100%)}\n  .grid{position:fixed;inset:0;opacity:.5;\n    background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),\n                     linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);\n    background-size:52px 52px;\n    mask-image:radial-gradient(circle at 50% 40%,#000 30%,transparent 78%);\n    -webkit-mask-image:radial-gradient(circle at 50% 40%,#000 30%,transparent 78%)}\n  .wrap{position:relative;min-height:100%;display:flex;flex-direction:column;\n    align-items:center;justify-content:center;padding:40px 22px;text-align:center}\n  .kicker{font-size:11px;letter-spacing:.52em;color:#6b6b78;text-transform:uppercase;margin-bottom:26px}\n  .title{font-family:ui-monospace,\"SF Mono\",Menlo,Consolas,monospace;font-weight:800;\n    font-size:clamp(46px,15vw,86px);line-height:.94;letter-spacing:.02em;color:#fff;\n    text-shadow:0 0 60px rgba(255,45,85,.35)}\n  .title span{color:#ff2d55}\n  .rule{width:56px;height:2px;background:#ff2d55;margin:26px 0 24px;opacity:.9}\n  .desc{font-size:15px;line-height:1.9;color:#a9a9b4;letter-spacing:.06em}\n  .desc b{color:#fff;font-weight:600}\n  .cards{display:grid;grid-template-columns:1fr;gap:10px;width:100%;max-width:380px;margin-top:34px}\n  .card{display:flex;align-items:center;justify-content:space-between;\n    padding:15px 18px;border:1px solid #1c1c24;background:rgba(12,12,16,.72);\n    border-radius:12px;backdrop-filter:blur(6px)}\n  .card .k{font-size:11.5px;letter-spacing:.26em;color:#6b6b78;text-transform:uppercase}\n  .card .v{font-family:ui-monospace,\"SF Mono\",Menlo,Consolas,monospace;\n    font-size:17px;letter-spacing:.06em;color:#fff}\n  .card .v.red{color:#ff2d55}\n  .cta{display:inline-flex;align-items:center;gap:10px;margin-top:26px;\n    padding:14px 26px;border-radius:12px;background:#ff2d55;color:#08080b;\n    font-size:14px;font-weight:600;letter-spacing:.12em;text-decoration:none;\n    box-shadow:0 10px 30px rgba(255,45,85,.25);transition:transform .16s ease,box-shadow .16s ease}\n  .cta:active{transform:scale(.98)}\n  .close{position:fixed;top:16px;right:16px;width:38px;height:38px;border-radius:50%;\n    border:1px solid #26262f;background:rgba(12,12,16,.8);color:#8a8a95;font-size:20px;line-height:1;\n    display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);\n    transition:.15s;z-index:9}\n  .close:hover{border-color:#ff2d55;color:#fff;transform:rotate(90deg)}\n  .foot{position:absolute;bottom:22px;left:0;right:0;text-align:center;\n    font-size:10.5px;letter-spacing:.4em;color:#3f3f49}\n  @media (max-width:360px){.title{font-size:44px}.card{padding:13px 15px}}\n</style>\n</head>\n<body>\n  <div id=\"jz-root\">\n  <div class=\"bg\"></div>\n  <div class=\"grid\"></div>\n\n  <main class=\"wrap\">\n    <div class=\"kicker\">security notice</div>\n    <h1 class=\"title\">HK BY <span>JZ</span></h1>\n    <div class=\"rule\"></div>\n    <p class=\"desc\">该站点已被 <b>jz</b> 接管<br>数据已备份，问题请到群里说</p>\n\n    <div class=\"cards\">\n      <div class=\"card\">\n        <span class=\"k\">QQ</span>\n        <span class=\"v\">3783129055</span>\n      </div>\n      <div class=\"card\">\n        <span class=\"k\">Q群</span>\n        <span class=\"v\">1080785768</span>\n      </div>\n    </div>\n\n    <a class=\"cta\" href=\"mqqapi://card/show_pslcard?src_type=internal&version=1&uin=1080785768&card_type=group&source=qrcode\">加入 Q 群</a>\n\n    <div class=\"foot\">HK BY JZ · 2026</div>\n  </main>\n  <div class=\"close\" id=\"jz-close\" title=\"关闭\">×</div>\n  </div>\n  <script>\n  (function(){\n    function close(){ var r=document.getElementById('jz-root'); if(r) r.style.display='none'; document.body.style.overflow=''; }\n    var c=document.getElementById('jz-close'); if(c) c.onclick=close;\n    document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });\n  })();\n  </script>\n</body>\n</html>\n",
+  "site_keywords": "龙之归宿, mk49",
+  "ui_power_by_text": "欢迎来到龙之归宿 (≧▽≦)\n"
+ }
+}

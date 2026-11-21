@@ -1,0 +1,133 @@
+{
+ "time": "2026-11-15 16:52:43",
+ "probes": [
+  {
+   "name": "manage/listForums",
+   "result": "OK",
+   "resp": {
+    "name": "UIError",
+    "message": "无权调用",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new UIError (/root/minibbs-server/utils/ui-error.ts:5:5)\n    at ManageController.<anonymous> (/root/minibbs-server/routes/bbs/controllers/ManageController.ts:382:13)\n    at Generator.next (<anonymous>)\n    at /root/minibbs-server/routes/bbs/controllers/ManageController.ts:20:71\n    at new Promise (<anonymous>)\n    at __awaiter (/root/minibbs-server/routes/bbs/controllers/ManageController.ts:16:12)\n    at ManageController.listForums (/root/minibbs-server/routes/bbs/controllers/ManageController.ts:285:16)\n    at ActionMetadata.callMethod (/root/minibbs-server/node_modules/src/metadata/ActionMetadata.ts:252:44)\n    at /root/minibbs-server/node_modules/src/RoutingControllers.ts:123:28"
+   }
+  },
+  {
+   "name": "manage/getForumAdminToken(mk48by049)",
+   "result": "OK",
+   "resp": {
+    "name": "UIError",
+    "message": "无权调用",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new UIError (/root/minibbs-server/utils/ui-error.ts:5:5)\n    at ManageController.<anonymous> (/root/minibbs-server/routes/bbs/controllers/ManageController.ts:408:13)\n    at Generator.next (<anonymous>)\n    at /root/minibbs-server/routes/bbs/controllers/ManageController.ts:20:71\n    at new Promise (<anonymous>)\n    at __awaiter (/root/minibbs-server/routes/bbs/controllers/ManageController.ts:16:12)\n    at ManageController.getForumAdminToken (/root/minibbs-server/routes/bbs/controllers/ManageController.ts:302:16)\n    at ActionMetadata.callMethod (/root/minibbs-server/node_modules/src/metadata/ActionMetadata.ts:252:44)\n    at /root/minibbs-server/node_modules/src/RoutingControllers.ts:123:28"
+   }
+  },
+  {
+   "name": "manage/trialLevel2",
+   "result": "OK",
+   "resp": {
+    "name": "UIError",
+    "message": "已领取，不能重复领取",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new UIError (/root/minibbs-server/utils/ui-error.ts:5:5)\n    at ManageController.<anonymous> (/root/minibbs-server/routes/bbs/controllers/ManageController.ts:354:13)\n    at Generator.next (<anonymous>)\n    at fulfilled (/root/minibbs-server/routes/bbs/controllers/ManageController.ts:17:58)\n    at runMicrotasks (<anonymous>)\n    at processTicksAndRejections (node:internal/process/task_queues:96:5)"
+   }
+  }
+ ],
+ "inbox": {
+  "total": 16,
+  "messages": [
+   {
+    "id": 268005,
+    "title": "你的帖子\"【管理日报】2026-06-1...\"有了新的评论",
+    "from": null,
+    "created_at": "2026-06-14T13:11:36.422Z"
+   },
+   {
+    "id": 266339,
+    "title": "你的帖子\"【管理日报】2026-06-1...\"被点赞了",
+    "from": null,
+    "created_at": "2026-06-12T08:02:44.343Z"
+   },
+   {
+    "id": 266564,
+    "title": "你的评论\"呜哇！发现违规帖子了...\"被点赞了",
+    "from": null,
+    "created_at": "2026-06-12T13:18:35.246Z"
+   },
+   {
+    "id": 266170,
+    "title": "你的评论\"呜哇！发现违规帖子了...\"有了新的回复",
+    "from": null,
+    "created_at": "2026-06-11T22:48:37.192Z"
+   },
+   {
+    "id": 266219,
+    "title": "你的帖子\"【管理日报】2026-06-1...\"有了新的评论",
+    "from": null,
+    "created_at": "2026-06-12T02:51:11.458Z"
+   },
+   {
+    "id": 266201,
+    "title": "你的回复\"您好，您的评论可能违...\"有了新的回复",
+    "from": null,
+    "created_at": "2026-06-12T01:26:32.417Z"
+   },
+   {
+    "id": 265032,
+    "title": "你的评论\"【管理员警告】您的帖...\"有了新的回复",
+    "from": null,
+    "created_at": "2026-06-10T07:36:41.617Z"
+   },
+   {
+    "id": 265079,
+    "title": "你的回复\"您好，您的评论可能违...\"有了新的回复",
+    "from": null,
+    "created_at": "2026-06-10T09:14:51.512Z"
+   },
+   {
+    "id": 265031,
+    "title": "你的评论\"【管理员警告】您的帖...\"有了新的回复",
+    "from": null,
+    "created_at": "2026-06-10T07:34:53.377Z"
+   },
+   {
+    "id": 265026,
+    "title": "你的评论\"【管理员警告】您的帖...\"有了新的回复",
+    "from": null,
+    "created_at": "2026-06-10T07:27:02.250Z"
+   },
+   {
+    "id": 230365,
+    "title": "你的帖子\"【管理日报】2026-04-0...\"有了新的评论",
+    "from": null,
+    "created_at": "2026-04-05T21:38:06.959Z"
+   },
+   {
+    "id": 227142,
+    "title": "你的帖子\"@銀洛 管理机器人身份组掉了，...\"有了新的评论",
+    "from": null,
+    "created_at": "2026-04-02T08:29:50.582Z"
+   },
+   {
+    "id": 227139,
+    "title": "你的帖子\"@銀洛 管理机器人身份组掉了，...\"被点赞了",
+    "from": null,
+    "created_at": "2026-04-02T08:25:20.072Z"
+   },
+   {
+    "id": 225394,
+    "title": "你的帖子\"【管理日报】2026-03-2...\"有了新的评论",
+    "from": null,
+    "created_at": "2026-03-30T02:21:55.043Z"
+   },
+   {
+    "id": 219752,
+    "title": "你的评论\"已开启“天眼“检察系...\"被点赞了",
+    "from": null,
+    "created_at": "2026-03-22T07:04:35.586Z"
+   },
+   {
+    "id": 219654,
+    "title": "你的评论\"小女儿真棒\"被点赞了",
+    "from": null,
+    "created_at": "2026-03-22T06:51:01.877Z"
+   }
+  ]
+ }
+}

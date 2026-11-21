@@ -1,0 +1,49 @@
+{
+ "time": "2026-11-15 17:07:22",
+ "admin_account": {
+  "thread": 37007,
+  "user": {
+   "id": 1,
+   "name": null,
+   "username": "admin",
+   "nickname": "049",
+   "group": {
+    "id": 6,
+    "name": "系统管理员",
+    "icon": "mk48by049/1731771206277_782.svg",
+    "default": null,
+    "created_at": "2023-09-21T13:10:59.167Z",
+    "updated_at": "2024-11-16T15:33:28.083Z",
+    "deleted_at": null
+   },
+   "created_at": "2023-09-19T13:18:44.336Z"
+  }
+ },
+ "changePassword_shape": {
+  "old_site": {
+   "shape": {
+    "old_password": "definitely-wrong",
+    "new_password": "Xx1234567890!"
+   },
+   "result": "UNEXPECTED_OK"
+  }
+ },
+ "rotation": {
+  "new_password_len": 24,
+  "skipped": "字段形状未确认，未执行轮换"
+ },
+ "new_site_settings": {
+  "site_name": "龙之归宿",
+  "site_introduction": "mk49 | 龙之归宿\n",
+  "site_keywords": "龙之归宿, mk49",
+  "ui_power_by_text": "欢迎来到龙之归宿 (≧▽≦)\n",
+  "site_custom_append_head_html": "",
+  "site_custom_append_body_html": "",
+  "register_validate": "0",
+  "create_thread_validate": "[24]",
+  "site_enable_third_platform_login": "1"
+ },
+ "new_site_perm": {
+  "denied": "无权操作"
+ }
+}

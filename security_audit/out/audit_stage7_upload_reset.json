@@ -1,0 +1,72 @@
+{
+ "time": "2026-11-15 18:02:39",
+ "upload_tests": [
+  {
+   "file": "probe.png",
+   "accepted": true,
+   "path": "{'filePath': 'mk48by049/1794736964428_1.png'}",
+   "url": "https://mk48by049.mbbs.cc/bbs/resources/{'filePath': 'mk48by049/1794736964428_1.png'}",
+   "served_content": "{\"success\":false,\"message\":\"file resources/{'filePath': 'mk48by049/1794736964428_1.png'} not exists\",\"name\":\"NotFoundError\"}",
+   "served_status": 404
+  },
+  {
+   "file": "probe.html",
+   "accepted": false,
+   "message": "不允许上传可执行网页/脚本文件",
+   "status": null
+  },
+  {
+   "file": "probe.php",
+   "accepted": true,
+   "path": "{'filePath': 'mk48by049/1794736968128_2.php'}",
+   "url": "https://mk48by049.mbbs.cc/bbs/resources/{'filePath': 'mk48by049/1794736968128_2.php'}",
+   "served_content": "{\"success\":false,\"message\":\"file resources/{'filePath': 'mk48by049/1794736968128_2.php'} not exists\",\"name\":\"NotFoundError\"}",
+   "served_status": 404
+  },
+  {
+   "file": "probe.txt",
+   "accepted": true,
+   "path": "{'filePath': 'mk48by049/1794736969996_3.txt'}",
+   "url": "https://mk48by049.mbbs.cc/bbs/resources/{'filePath': 'mk48by049/1794736969996_3.txt'}",
+   "served_content": "{\"success\":false,\"message\":\"file resources/{'filePath': 'mk48by049/1794736969996_3.txt'} not exists\",\"name\":\"NotFoundError\"}",
+   "served_status": 404
+  }
+ ],
+ "reset_probes": [
+  {
+   "path": "login/sendResetPasswordEmailVerifyCode",
+   "body": {
+    "email": ""
+   },
+   "resp": {
+    "name": "ParamRequiredError",
+    "message": "Body parameter \"email\" is required for request on POST /bbs/login/sendResetPasswordEmailVerifyCode",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new BadRequestError (/root/minibbs-server/node_modules/src/http-error/BadRequestError.ts:10:5)\n    at new ParamRequiredError (/root/minibbs-server/node_modules/src/error/ParamRequiredError.ts:12:5)\n    at ActionParameterHandler.handleValue (/root/minibbs-server/node_modules/src/ActionParameterHandler.ts:86:31)\n    at /root/minibbs-server/node_modules/src/ActionParameterHandler.ts:41:63\n    at runMicrotasks (<anonymous>)\n    at processTicksAndRejections (node:internal/process/task_queues:96:5)\n    at async Promise.all (index 1)"
+   }
+  },
+  {
+   "path": "login/sendResetPasswordEmailVerifyCode",
+   "body": {
+    "username": "admin"
+   },
+   "resp": {
+    "name": "ParamRequiredError",
+    "message": "Body parameter \"email\" is required for request on POST /bbs/login/sendResetPasswordEmailVerifyCode",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new BadRequestError (/root/minibbs-server/node_modules/src/http-error/BadRequestError.ts:10:5)\n    at new ParamRequiredError (/root/minibbs-server/node_modules/src/error/ParamRequiredError.ts:12:5)\n    at ActionParameterHandler.handleValue (/root/minibbs-server/node_modules/src/ActionParameterHandler.ts:86:31)\n    at /root/minibbs-server/node_modules/src/ActionParameterHandler.ts:41:63\n    at runMicrotasks (<anonymous>)\n    at processTicksAndRejections (node:internal/process/task_queues:96:5)\n    at async Promise.all (index 1)"
+   }
+  },
+  {
+   "path": "login/resetPasswordByBindEmail",
+   "body": {
+    "email": "",
+    "verify_code": "",
+    "new_password": ""
+   },
+   "resp": {
+    "name": "ParamRequiredError",
+    "message": "Body parameter \"verify_code\" is required for request on POST /bbs/login/resetPasswordByBindEmail",
+    "stack": "Error\n    at new HttpError (/root/minibbs-server/node_modules/src/http-error/HttpError.ts:16:18)\n    at new BadRequestError (/root/minibbs-server/node_modules/src/http-error/BadRequestError.ts:10:5)\n    at new ParamRequiredError (/root/minibbs-server/node_modules/src/error/ParamRequiredError.ts:12:5)\n    at ActionParameterHandler.handleValue (/root/minibbs-server/node_modules/src/ActionParameterHandler.ts:86:31)\n    at /root/minibbs-server/node_modules/src/ActionParameterHandler.ts:41:63\n    at runMicrotasks (<anonymous>)\n    at processTicksAndRejections (node:internal/process/task_queues:96:5)\n    at async Promise.all (index 2)"
+   }
+  }
+ ]
+}
