@@ -149,7 +149,7 @@ class ChatClient:
         last_err = None
         for model in dict.fromkeys(order):
             out = None
-            for attempt in range(3):  # per-model retry (channels flap 5xx)
+            for attempt in range(4):  # per-model retry + slow pass
                 try:
                     out = self._post(model, messages, temp, max_tokens,
                                      json_mode)
@@ -160,7 +160,7 @@ class ChatClient:
                     last_err = "%s: %s" % (model, str(exc)[:140])
                     out = None
                     import time as _t
-                    _t.sleep(1.2 * (attempt + 1))
+                    _t.sleep(1.2 * (attempt + 1) if attempt < 1 else 8.0 + 4.0 * (attempt - 1))  # slow pass for transient 5xx
             if out:
                 return out
         raise LLMError("all models failed: %s" % last_err)

@@ -36,8 +36,93 @@ class State:
             except (OSError, ValueError) as exc:
                 print("[state] load failed: %s" % exc)
 
+    def _merge_disk(self):
+        """Merge on-disk state so forum loop + chat loop never clobber each
+        other's writes (lost-update fix). Counters use max, logs union."""
+        if not os.path.exists(self.path):
+            return
+        try:
+            with open(self.path, "r", encoding="utf-8") as fh:
+                disk = json.load(fh)
+        except (OSError, ValueError):
+            return
+        if not isinstance(disk, dict):
+            return
+        me, d = self.data, disk
+
+        def union(key, idkey=None, cap=8000):
+            a = me.get(key)
+            b = d.get(key)
+            if not isinstance(a, list) or not isinstance(b, list):
+                return
+            if idkey:
+                seen = {}
+                for x in a + b:
+                    if isinstance(x, dict):
+                        seen[x.get(idkey)] = x
+                    else:
+                        seen[x] = x
+                out = list(seen.values())
+                if out and isinstance(out[0], dict):
+                    out.sort(key=lambda x: x.get("ts") or x.get("seq") or 0)
+            else:
+                out = list(dict.fromkeys(a + b))
+            if len(out) > cap:
+                del out[: len(out) - cap]
+            me[key] = out
+
+        for k in ("processed_threads", "processed_posts", "my_threads",
+                  "my_posts", "liked_threads", "welcomed_users",
+                  "seen_messages"):
+            union(k)
+        union("action_log", idkey="seq", cap=3000)
+        union("notes", idkey="id", cap=400)
+
+        # daily buckets: per-key max
+        dd = d.get("daily")
+        if isinstance(dd, dict):
+            day = self._today()
+            for bucket_day in (day,):
+                mb = me["daily"].get(bucket_day) or {}
+                db = dd.get(bucket_day)
+                if isinstance(db, dict):
+                    for k, v in db.items():
+                        try:
+                            mb[k] = max(int(mb.get(k, 0)), int(v))
+                        except (TypeError, ValueError):
+                            pass
+                    me["daily"][bucket_day] = mb
+
+        # stats: per-key max
+        ds = d.get("stats")
+        if isinstance(ds, dict):
+            ms = me.setdefault("stats", {})
+            for k, v in ds.items():
+                try:
+                    ms[k] = max(int(ms.get(k, 0)), int(v))
+                except (TypeError, ValueError):
+                    pass
+
+        # chat cursors: max per conversation
+        mc = me.get("chat_last_seen")
+        dc = d.get("chat_last_seen")
+        if isinstance(mc, dict) and isinstance(dc, dict):
+            for k, v in dc.items():
+                try:
+                    mc[k] = max(int(mc.get(k, 0)), int(v))
+                except (TypeError, ValueError):
+                    pass
+
+        # log sequence: max
+        try:
+            me["log_seq"] = max(int(me.get("log_seq", 0)),
+                                int(d.get("log_seq", 0)))
+        except (TypeError, ValueError):
+            pass
+
     def save(self):
         with self.lock:
+            self._merge_disk()
             os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
             tmp = self.path + ".tmp"
             with open(tmp, "w", encoding="utf-8") as fh:

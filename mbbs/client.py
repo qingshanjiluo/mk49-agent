@@ -40,6 +40,26 @@ def _parse_retry_after(text):
     return int(m.group(1)) if m else None
 
 
+def _net_retry(exc, attempt, tries=3, base=4.0, log=None):
+    """Auto-sleep + retry on transient network errors (502/timeout/refused)."""
+    msg = str(exc)
+    transient = any(k in msg for k in (
+        "Timeout", "timed out", "Connection", "reset", "Read timed",
+        "Max retries", "502", "503", "504", "RemoteDisconnected"))
+    if not transient or attempt >= tries:
+        return False
+    import random as _r
+    nap = base * (attempt + 1) + _r.uniform(0.3, 1.8)
+    if log:
+        log("network hiccup, auto-sleep %.1fs then retry %d/%d (%s)"
+            % (nap, attempt + 2, tries, msg[:80]))
+    else:
+        print("[net] auto-sleep %.1fs retry %d/%d: %s"
+              % (nap, attempt + 2, tries, msg[:80]))
+    time.sleep(nap)
+    return True
+
+
 class MBBSClient:
     def __init__(self, base_url, username="", password="", timeout=20):
         base_url = (base_url or "").rstrip("/")
@@ -92,14 +112,27 @@ class MBBSClient:
         headers = self._auth_headers()
         if files is None and json_body is not None:
             headers["Content-Type"] = "application/json"
-        try:
-            resp = self.session.request(
-                method, url,
-                params=params, json=json_body, files=files, headers=headers,
-                timeout=self.timeout,
-            )
-        except requests.RequestException as exc:
-            raise MBBSAPIError("network error: %s" % exc)
+        # transient network / gateway errors: auto-sleep + retry (3x)
+        resp = None
+        for attempt in range(4):
+            try:
+                resp = self.session.request(
+                    method, url,
+                    params=params, json=json_body, files=files, headers=headers,
+                    timeout=self.timeout,
+                )
+            except requests.RequestException as exc:
+                if _net_retry(exc, attempt, tries=3, log=None):
+                    continue
+                raise MBBSAPIError("network error: %s" % exc)
+            if resp.status_code in (502, 503, 504):
+                if _net_retry(
+                        Exception("HTTP %d" % resp.status_code),
+                        attempt, tries=3, log=None):
+                    continue
+            break
+        if resp is None:
+            raise MBBSAPIError("network error: no response")
 
         try:
             payload = resp.json()

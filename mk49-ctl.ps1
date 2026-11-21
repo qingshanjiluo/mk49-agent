@@ -8,7 +8,7 @@ function Get-AgentProcs {
     @(Get-CimInstance Win32_Process | Where-Object {
         $_.Name -match '^(python|cmd)' -and
         $_.CommandLine -and
-        $_.CommandLine -match 'run\.py (loop|dashboard)'
+        $_.CommandLine -match 'run\.py (loop|dashboard|chatloop)'
     })
 }
 
@@ -48,6 +48,14 @@ function Show-Status {
         Write-Host ("仪表盘 dashboard: 运行中  PID " + ($dash[0].ProcessId))
     } else {
         Write-Host "仪表盘 dashboard: 未运行"
+    }
+    $chat = @($procs | Where-Object {
+        $_.CommandLine -match 'run\.py chatloop' -and $_.Name -match 'python'
+    })
+    if ($chat) {
+        Write-Host ("聊天循环 chatloop: 运行中  PID " + ($chat[0].ProcessId))
+    } else {
+        Write-Host "聊天循环 chatloop: 未运行"
     }
     $p = Test-Port 8899
     if ($p) {
@@ -139,8 +147,13 @@ function Start-Agent {
     $hasDash = @($procs | Where-Object {
         $_.CommandLine -match 'run\.py dashboard' -and $_.Name -match 'python'
     }).Count -gt 0
+    $hasChat = @($procs | Where-Object {
+        $_.CommandLine -match 'run\.py chatloop' -and $_.Name -match 'python'
+    }).Count -gt 0
     if (-not $hasLoop) { Start-Part "loop" }
     else { Write-Host "loop 已在运行，跳过。" }
+    if (-not $hasChat) { Start-Part "chatloop" }
+    else { Write-Host "chatloop 已在运行，跳过。" }
     if (-not $hasDash) { Start-Part "dashboard" }
     else { Write-Host "dashboard 已在运行，跳过。" }
     Start-Sleep -Seconds 2
@@ -156,6 +169,7 @@ switch ($Action) {
         Stop-Agent
         Start-Sleep -Seconds 1
         Start-Part "loop"
+        Start-Part "chatloop"
         Start-Part "dashboard"
         Start-Sleep -Seconds 2
         Show-Status

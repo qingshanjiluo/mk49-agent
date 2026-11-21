@@ -21,6 +21,21 @@ class ImageError(Exception):
     pass
 
 
+def _auto_sleep(what, exc, attempt, tries=3, base=3.0):
+    """Sleep on transient timeout/network errors, then retry."""
+    msg = str(exc)
+    transient = any(k in msg for k in (
+        "Timeout", "timed out", "Connection", "reset", "Read timed", "502", "503", "504"))
+    if not transient or attempt >= tries:
+        return False
+    import random as _r
+    nap = base * attempt + _r.uniform(0.3, 1.5)
+    print("[img] %s timeout, auto-sleep %.1fs then retry %d/%d "
+          "(%s)" % (what, nap, attempt + 1, tries, msg[:70]))
+    time.sleep(nap)
+    return True
+
+
 def _session():
     s = requests.Session()
     s.trust_env = False
@@ -112,7 +127,9 @@ def _load_models(here):
 
 
 def generate_furry(prompt, size=None, timeout=180):
-    """Primary provider: furry gateway /images/generations (agnes-image-*)."""
+    """Primary provider: furry gateway /images/generations (agnes-image-*).
+
+    Auto-sleep + 2 passes on timeout so a slow gateway never kills the cycle."""
     import base64
 
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -125,7 +142,9 @@ def generate_furry(prompt, size=None, timeout=180):
         key = os.getenv(env_name) or ""
         if not key:
             from .llm import credentials_refs
-            key = credentials_refs(models.get("credential_file") or ".credentials.yaml").get(env_name, "")
+            key = credentials_refs(
+                models.get("credential_file") or ".credentials.yaml"
+            ).get(env_name, "")
     if not key:
         raise ImageError("no image gateway key (FURRY_API_KEY)")
 
@@ -136,39 +155,63 @@ def generate_furry(prompt, size=None, timeout=180):
     cand += ["agnes-image-2.5-flash", "agnes-image-2.1-flash"]
     size = size or models.get("image_size") or "1024x1024"
     endpoint = (models.get("image_endpoint") or "/images/generations")
+    order = [m for m in dict.fromkeys([m for m in cand if m])]
 
     last_err = None
-    for model in dict.fromkeys([m for m in cand if m]):
-        try:
-            resp = _session().post(
-                base + endpoint,
-                headers={"Authorization": "Bearer " + key,
-                         "Content-Type": "application/json"},
-                json={"model": model, "prompt": prompt, "n": 1, "size": size},
-                timeout=timeout)
-
-        except requests.RequestException as exc:
-            last_err = "%s net %s" % (model, exc)
-            continue
-        if resp.status_code != 200:
-            last_err = "%s HTTP %s %s" % (model, resp.status_code, resp.text[:120])
-            continue
-        try:
-            data = resp.json()
-            item = (data.get("data") or [{}])[0]
-        except ValueError:
-            last_err = "%s bad json" % model
-            continue
-        if item.get("b64_json"):
-            return base64.b64decode(item["b64_json"]), "png"
-        if item.get("url"):
-            img = _session().get(item["url"], timeout=timeout,
-                                 headers={"User-Agent": "Mozilla/5.0"})
-            if img.status_code == 200 and img.content:
-                return img.content, _ext_for(img.headers.get("content-type", ""), img.content)
-            last_err = "%s download HTTP %s" % (model, img.status_code)
-        else:
+    for pass_no in range(2):          # 2nd pass only after auto-sleep
+        for model in order:
+            try:
+                resp = _session().post(
+                    base + endpoint,
+                    headers={"Authorization": "Bearer " + key,
+                             "Content-Type": "application/json"},
+                    json={"model": model, "prompt": prompt, "n": 1,
+                          "size": size},
+                    timeout=timeout)
+            except requests.RequestException as exc:
+                last_err = "%s net %s" % (model, exc)
+                if _auto_sleep("generate " + model, exc, pass_no, 2):
+                    continue
+                continue
+            if resp.status_code != 200:
+                last_err = "%s HTTP %s %s" % (model, resp.status_code,
+                                              resp.text[:120])
+                continue
+            try:
+                data = resp.json()
+                item = (data.get("data") or [{}])[0]
+            except ValueError:
+                last_err = "%s bad json" % model
+                continue
+            if item.get("b64_json"):
+                return base64.b64decode(item["b64_json"]), "png"
+            if item.get("url"):
+                dl_ok = False
+                for dl_try in range(3):
+                    try:
+                        img = _session().get(
+                            item["url"], timeout=timeout,
+                            headers={"User-Agent": "Mozilla/5.0"})
+                        if img.status_code == 200 and img.content:
+                            return img.content, _ext_for(
+                                img.headers.get("content-type", ""),
+                                img.content)
+                        last_err = "%s download HTTP %s" % (
+                            model, img.status_code)
+                    except requests.RequestException as exc:
+                        last_err = "%s download net %s" % (model, exc)
+                        if not _auto_sleep("download " + model, exc,
+                                           dl_try, 3):
+                            break
+                        continue
+                    dl_ok = _auto_sleep("download " + model,
+                                        Exception(last_err), dl_try, 3)
+                    if not dl_ok:
+                        break
+                continue
             last_err = "%s empty payload" % model
+        if last_err and ("net" in last_err or "download net" in last_err):
+            time.sleep(4)
     raise ImageError(last_err or "furry image failed")
 
 
@@ -197,13 +240,25 @@ def to_png_bytes(raw, max_width=None):
     return buf.getvalue()
 
 
-def upload_to_forum(client, raw_bytes, file_name=None, mime=None):
-    """Upload to forum storage, returns absolute URL for inline <img>/markdown."""
+def upload_to_forum(client, raw_bytes, file_name=None, mime=None, tries=3):
+    """Upload to forum storage (auto-sleep retry on timeout)."""
     if file_name is None:
         file_name = "agent_%d.png" % int(time.time())
     if mime is None:
         mime = "image/" + ("png" if file_name.endswith(".png") else "jpeg")
-    data = client.upload_resource(raw_bytes, file_name, mime)
+    data = None
+    last = None
+    for attempt in range(tries):
+        try:
+            data = client.upload_resource(raw_bytes, file_name, mime)
+            break
+        except Exception as exc:
+            last = exc
+            if _auto_sleep("upload " + file_name[:30], exc, attempt, tries):
+                continue
+            raise
+    if data is None:
+        raise ImageError("upload failed: %s" % str(last)[:140])
     path = data.get("filePath") or data.get("path") or data.get("url")
     if not path:
         raise ImageError("upload returned no filePath: %s" % data)
@@ -218,12 +273,28 @@ def generate_and_upload(client, prompt, provider=None, **kw):
     return url
 
 
-def fetch_remote(url, timeout=60):
-    resp = _session().get(url, timeout=timeout,
-                          headers={"User-Agent": "Mozilla/5.0"})
-    if resp.status_code != 200:
-        raise ImageError("fetch %s -> HTTP %s" % (url, resp.status_code))
-    return resp.content, _ext_for(resp.headers.get("content-type", ""), resp.content)
+def fetch_remote(url, timeout=60, tries=3):
+    last = None
+    for attempt in range(tries):
+        try:
+            resp = _session().get(url, timeout=timeout,
+                                  headers={"User-Agent": "Mozilla/5.0"})
+            if resp.status_code != 200:
+                last = ImageError("fetch HTTP %s" % resp.status_code)
+                if _auto_sleep("fetch", last, attempt, tries):
+                    continue
+                raise last
+            return resp.content, _ext_for(
+                resp.headers.get("content-type", ""), resp.content)
+        except Exception as exc:
+            last = exc
+            if _auto_sleep("fetch " + url.rsplit("/", 1)[-1][:40],
+                           exc, attempt, tries):
+                continue
+            if isinstance(exc, ImageError):
+                raise
+            raise ImageError("fetch %s: %s" % (url, str(exc)[:120]))
+    raise ImageError("fetch failed: %s" % str(last)[:140])
 
 
 FORUM_MAX_UPLOAD = 1000 * 1000  # forum rejects uploads over 1MB

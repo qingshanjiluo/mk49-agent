@@ -1,7 +1,8 @@
 """Entry point.
 
   python run.py run            # one autonomous cycle
-  python run.py loop            # continuous cycles (scan_interval)
+  python run.py loop            # continuous forum cycles
+  python run.py chatloop        # independent chat-room reply loop
   python run.py digest         # force daily digest post
   python run.py doctor         # connectivity + capability report
   python run.py demo-image "a cat astronaut"   # generate+upload image
@@ -118,6 +119,15 @@ def cmd_learn():
     return 0
 
 
+def cmd_chatloop():
+    """Independent chat-room reply agent (shares state+knowledge)."""
+    agent, cfg, llm = build_agent()
+    agent.bootstrap()
+    from mk49.chat_agent import ChatAgent
+    ChatAgent(agent).run_forever()
+    return 0
+
+
 def cmd_loop():
     agent, cfg, llm = build_agent()
     agent.bootstrap()
@@ -140,6 +150,7 @@ def main(argv):
     table = {
         "run": cmd_run,
         "loop": cmd_loop,
+        "chatloop": cmd_chatloop,
         "doctor": cmd_doctor,
         "digest": cmd_digest,
         "learn": cmd_learn,
